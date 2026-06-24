@@ -91,6 +91,16 @@ Recent cards get a cyan AI-style outline glow. Recent cards that need attention 
 
 Eric has approved concise private WhatsApp summaries to the configured private WhatsApp target for this Gmail-to-BacBan workflow only when BacBan changed or Eric's attention is needed.
 
+For any incoming email Eric should personally look at, the WhatsApp message should answer:
+
+- who is waiting on Eric
+- what they need him to do
+- short context, such as the sender/project/subject
+
+Preferred shape: `<person/org> is waiting on you to <specific action>. <short context/project>.`
+
+If the sender or requested action is unclear, say that plainly instead of guessing. Keep the message private, short, and decision-oriented. This approval applies even when the main useful action is marking or creating a BacBan card with `waitingOn` for Eric attention.
+
 This approval does not authorize:
 
 - Gmail sends
