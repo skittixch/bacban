@@ -15,6 +15,7 @@
 - Treat prior memory as context, not proof. Verify live repo, Docker, API, and file state before writing.
 - Prefer the proven pattern from recent work: one real proof case, then a manifest/job file, then a repeatable harness with dry-run/evidence output.
 - Keep app files in the real project root. Put Codex-only scratch, audits, job manifests, screenshots, and harness outputs under `codex/`.
+- For Gmail-triggered BacBan triage, OpenCLAW/Google/Gmail hooks, WhatsApp summaries, Codex native hooks, or future Hermes-style replacement work, read `codex/GMAIL_BACBAN_RUNBOOK.md` before changing behavior.
 
 ## Loop Library overlay
 
@@ -43,6 +44,7 @@
 - Before posting board changes, create a timestamped backup of `kanban-data\kanban-data.json`.
 - Validate JSON and confirm `http://127.0.0.1:3001/health` after writes.
 - Cards created by Codex should be concise and useful: title, source project/path, current status, next action, and evidence links or notes in `references` when needed.
+- For agent-created or agent-changed cards, set `updatedAt` as a UTC ISO timestamp. Set `doneAt` as a UTC ISO timestamp when moving a card to done/completed. Use `waitingOn` only when Eric or another party needs to act; recent cards with `waitingOn` get brighter attention highlighting in the UI.
 
 ## Harness direction
 
@@ -56,3 +58,8 @@
 - Do not remove containers, images, or board data unless they are clearly accidental or the user explicitly asks.
 - An exited `kanban-dev` container is part of the documented optional workflow, not evidence of an accidental second app by itself.
 - When another Codex chat appears to have created a duplicate app, check `docker compose ls -a`, `docker ps -a`, listening ports, and top-level file timestamps before deleting anything.
+
+## Git contract
+
+- This directory is a local Git repo. Use `git status` and `git diff` before app/doc edits.
+- Runtime board data, build output, dependencies, private Codex job payloads, and automation outputs are intentionally ignored. Do not force-add ignored private state without explicit approval.
