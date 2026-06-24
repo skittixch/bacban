@@ -1,0 +1,38 @@
+# Dependencies and build output
+node_modules/
+**/node_modules/
+kanban-frontend/build/
+**/.cache/
+dist/
+coverage/
+
+# Runtime board data and backups
+kanban-data/
+*.bak
+*.bak.json
+*.backup
+*.log
+
+# Local env and credentials
+.env
+.env.*
+*.local
+*.pem
+*.key
+*.p12
+*.pfx
+client_secret*.json
+credentials*.json
+token*.json
+
+# Local automation outputs and private job payloads
+codex/outputs/
+codex/**/outputs/
+codex/jobs/
+codex/scripts/bacban-notify*.ps1
+
+# OS and editor state
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

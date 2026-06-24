@@ -1,0 +1,49 @@
+services:
+  kanban-backend:
+    build: ./kanban-backend
+    container_name: kanban-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./kanban-data:/data  # Bind mount for persistent storage
+    environment:
+      - PORT=3001
+      - DATA_FILE=/data/kanban-data.json
+    networks:
+      - npm_network
+
+  kanban-frontend:
+    build: ./kanban-frontend
+    container_name: kanban-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_API_URL=http://localhost:3001
+    depends_on:
+      - kanban-backend
+    networks:
+      - npm_network
+
+  # Development server — only starts with: docker compose --profile dev up kanban-dev
+  kanban-dev:
+    image: node:18-alpine
+    container_name: kanban-dev
+    profiles: ["dev"]
+    working_dir: /app
+    command: npm start
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./kanban-frontend:/app
+    environment:
+      - REACT_APP_API_URL=http://localhost:3001
+    depends_on:
+      - kanban-backend
+    networks:
+      - npm_network
+
+networks:
+  npm_network:
+    driver: bridge
