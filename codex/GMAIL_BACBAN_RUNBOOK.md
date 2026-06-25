@@ -1,6 +1,6 @@
 # Gmail to BacBan Agent Runbook
 
-Last updated: 2026-06-24
+Last updated: 2026-06-25
 
 This file is the durable handoff for the Gmail-triggered BacBan workflow across Codex, OpenCLAW, BacBan, and future Hermes-style agents.
 
@@ -11,11 +11,11 @@ Incoming Gmail is not handled by native Codex hooks. The current event path is:
 1. Gmail Pub/Sub watch for the configured Gmail account on `INBOX`.
 2. `gog` / OpenCLAW webhook listener receives the push event.
 3. OpenCLAW maps the event to hook id `gmail-bacban-triage` with stable session key `hook:gmail-bacban-triage`.
-4. The mapped prompt runs Codex against the live BacBan stack at `X:\_bacsapps\bacban`.
-5. Codex reads Gmail context as needed, keeps Gmail read-only unless Eric explicitly approves Gmail mutations, updates BacBan through the live API when justified, and starts a bounded project-local work loop when the email is implementation-ready.
-6. If BacBan changed or Eric needs a decision, the workflow may send a concise private WhatsApp summary to Eric through OpenCLAW.
+4. The mapped prompt runs Codex against the live BacBan stack from the repo root.
+5. Codex reads Gmail context as needed, keeps Gmail read-only unless the owner explicitly approves Gmail mutations, updates BacBan through the live API when justified, and starts a bounded project-local work loop when the email is implementation-ready.
+6. If BacBan changed or the owner needs a decision, the workflow may send a concise private status summary through OpenCLAW.
 
-Cutover status as of 2026-06-24: Gmail Pub/Sub is the primary intake path. `gog gmail watch status` confirmed the `INBOX` watch for Eric's Gmail account on topic `projects/gmail-automation-394816/topics/gog-gmail-watch`, with delivery status `ok` at 2026-06-24 16:00:25 -05:00 before restart. After the OpenCLAW gateway restart, the watch refreshed at 2026-06-24 16:30:06 -05:00 and expires 2026-07-01 16:30:06 -05:00. Keep the scheduled Codex sweep as a safety net, not the main trigger.
+Cutover status belongs in local private operations notes, not in public Git. In this repo, treat Gmail Pub/Sub as the primary intake shape when configured, and verify the current watch each run with `gog gmail watch status --account <configured-gmail-account> --json --no-input`. Keep any scheduled Codex sweep as a safety net, not the main trigger.
 
 Important distinction: OpenCLAW is the inbound/event and WhatsApp gateway. BacBan API readback is the source of truth for whether board work succeeded.
 
@@ -61,11 +61,34 @@ Default routing:
 - BacBan, Backban, Loom, Codex-agent workflow, trigger, automation, and internal workflow/system-setup items: `Life`, not `Work`, unless Eric explicitly routes one elsewhere
 - Lyndon, Rachel, Tiki Taco, RW2 Productions, Field Trip Films items: `Work`
 - New unscheduled work: `To Do`
+- Eric-owned action, approval, or decision needed: `To Do` on the appropriate board, with `waitingOn` and next action explicit
 - Active work: `In Progress`
-- Blocked, waiting, review, or needs Eric input: `On hold` or closest waiting/review column
+- External wait, non-Eric blocker, review by someone else, or not actionable by Eric right now: `On hold` or closest waiting/review column
 - Finished work: `Done` / `Completed`
 
 Gmail remains read-only unless Eric explicitly approves send, archive, delete, label, or draft actions.
+
+## Active Eric / Reply-Nudge Rule
+
+Before notifying Eric about a coworker/client ask, inspect the same Gmail thread for newer Eric sent mail or other clear outgoing activity from Eric.
+
+If Eric meaningfully responded after the ask, classify the event as `already-handled-by-Eric` or `status-only`, update durable state only when useful, and do not send WhatsApp or email. A newer meaningful reply, uploaded asset, shared link, or other clear outgoing action is enough evidence to suppress a duplicate nudge.
+
+If the ask is addressed to Eric or clearly depends on Eric and no meaningful Eric response exists yet, allow a 20-minute grace window from the latest actionable inbound message before nudging. If it is still unanswered after that window, a concise private WhatsApp nudge to Eric is allowed and should include the proposed reply for approval. If the message is newer than 20 minutes, record or track it only if needed and do not nudge unless there is a separate urgent deadline.
+
+Do not send Gmail replies, create Gmail drafts, or reply to third parties without Eric's explicit approval. For any first live email test of a third-party reply flow, send only a private test copy to Eric's approved private address or authenticated `me`. After Eric approves that test and the exact recipient/thread, then and only then send to the intended person.
+
+## Tiki Taco SharePoint / Clipchamp Media Intake
+
+For Rachel/Tiki Taco emails that contain a SharePoint, Clipchamp, or Microsoft Stream video link, first try the authenticated browser route before broad discovery:
+
+1. Open the email link in Chrome using the existing signed-in browser session.
+2. Confirm the Stream page title/media name, such as `0624 (1).mov`.
+3. Use the Stream command bar `Download` action.
+4. If Chrome writes a stable large temp file into the local Downloads folder, copy it into the target project `incoming` folder with a human-readable name.
+5. Verify the copied file with `ffprobe` before treating it as source media.
+
+Direct `curl`/HTTP with `download=1` can stop at SharePoint authentication and produce only a small HTML file. Prefer the authenticated browser route for this source class, then verify the downloaded media with `ffprobe`.
 
 ## BacBan Write Contract
 
@@ -89,7 +112,8 @@ Use compatible JSON fields only.
 - `createdAt`: existing board display date shape is acceptable.
 - `updatedAt`: UTC ISO string, for every create/update/move.
 - `doneAt`: UTC ISO string when moved to done/completed.
-- `waitingOn`: only when Eric or an external party needs to act; this drives attention highlighting.
+- `waitingOn`: only when Eric or an external party needs to act; this drives attention highlighting. If `waitingOn` is Eric, route the card to `To Do` unless Eric explicitly asks for it to be held.
+- Explicit email priority lists: if the email plainly gives an ordered priority list, set `priority` to the 1-based rank on every affected card, set `prioritySource` to `email`, set `priorityTotal` when known, and set `priorityLabel` only when the sender gave useful wording for the rank. Keep the card order aligned with the stated list when practical, and mention the source email in `references`. Do not infer this from tone alone.
 - `references`: dated, human-scannable notes with latest signal, work done, evidence, verification, status, and next action.
 
 Older numeric `doneAt` values are still supported by the UI.
@@ -130,11 +154,27 @@ This approval does not authorize:
 
 If WhatsApp delivery fails, do not mark the BacBan write as failed until board write/readback has been checked separately.
 
+## Direct WhatsApp Intake Reliability
+
+As of 2026-06-25, phone-origin WhatsApp messages for the BacBan/OpenCLAW path should route to the dedicated OpenClaw agent `bacban-whatsapp-intake`, not the broad default `main` agent. The intake workspace is private local state, heartbeat-disabled, and should acknowledge quickly or fail closed for broad/unsafe work.
+
+If you keep local operator probes under `codex\scripts\`, use these shapes before changing WhatsApp behavior or when replies regress:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\codex\scripts\repair-openclaw-whatsapp.ps1 -DryRunMessage -RetryCount 3 -RetryDelaySeconds 1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\codex\scripts\openclaw-whatsapp-reliability.ps1 -DryRunMessage
+powershell -NoProfile -ExecutionPolicy Bypass -File .\codex\scripts\prove-openclaw-whatsapp-route.ps1 -RecentWithinMinutes 45
+```
+
+Private proof artifacts should live under `codex\outputs\` and stay out of Git. A healthy proof should show the latest phone-origin WhatsApp direct session belongs to `bacban-whatsapp-intake`, the broad `main` session did not advance, the tail shows a successful message, and recovery/reliability probes have no critical findings.
+
+The local WhatsApp harnesses use the named mutex `Local\BacBanOpenClawCliLock` so overlapping operator probes do not race OpenClaw CLI calls. If a BacBan due-notification send uses `codex\scripts\bacban-notify.ps1`, it must check the OpenClaw send exit code before marking notifications sent.
+
 ## Eric-Only Completion / Blocked Replies
 
 Eric has approved same-method status replies when an incoming email or WhatsApp task has been completed or marked blocked. Use the method that contacted the system when available:
 
-- Email-origin tasks: send or reply only to Eric's approved private email address.
+- Email-origin tasks: send or reply only to Eric's approved private email address or authenticated `me`.
 - WhatsApp-origin tasks: reply only to the configured private WhatsApp target.
 
 The status message should be short and say whether the task completed or is blocked, what changed, what was verified, and the smallest next action if blocked. This approval does not authorize messages to anyone except Eric, client-visible delivery, publishing, payment, credential, destructive, or production actions.
@@ -152,7 +192,7 @@ The repository intentionally ignores private/runtime state by default:
 - `kanban-frontend/build/`
 - `codex/outputs/`
 - `codex/jobs/`
-- `codex/scripts/bacban-notify*.ps1`
+- `codex/scripts/`
 - env, credential, token, and key patterns
 
 Use `git status` and `git diff` for future app/doc changes. Do not force-add ignored private state without explicit approval.

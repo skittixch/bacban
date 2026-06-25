@@ -30,6 +30,7 @@ codex/outputs/
 codex/**/outputs/
 codex/jobs/
 codex/agent-ledger/*.jsonl
+codex/scripts/
 codex/scripts/bacban-notify*.ps1
 
 # OS and editor state
