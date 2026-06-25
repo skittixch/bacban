@@ -106,6 +106,7 @@ const TaskCard = ({
     duplicateTask: onDuplicateTask,
     getTaskProgress,
     projectColors,
+    settings,
   } = kanban;
   const { showContextMenu } = useContextMenu();
 
@@ -130,11 +131,14 @@ const TaskCard = ({
   );
 
   let opacity = 1;
-  if (task.doneAt) {
+  const completedTaskRetentionDays = Number(settings?.completedTaskRetentionDays ?? 3);
+  const completionFadeEnabled = settings?.completedTaskFade !== false;
+
+  if (completionFadeEnabled && completedTaskRetentionDays > 0 && task.doneAt) {
     const doneAt = parseTaskTime(task.doneAt);
     if (doneAt) {
       const daysOld = (Date.now() - doneAt) / (1000 * 60 * 60 * 24);
-      opacity = Math.max(0, 1 - (daysOld / 3));
+      opacity = Math.max(0.08, 1 - (daysOld / completedTaskRetentionDays));
     }
   }
 

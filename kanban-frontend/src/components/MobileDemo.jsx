@@ -9,9 +9,70 @@ const LONG_PRESS_MS = 650;
 const SWIPE_COMMIT_PX = 136;
 const SWIPE_DEAD_ZONE_PX = 10;
 const MOVE_CANCEL_PX = 14;
+const VERTICAL_SCROLL_SLOP_PX = 8;
 const INTERACTIVE_SELECTOR = 'button, a, input, textarea, select, [contenteditable="true"], [role="button"]';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+let activeSwipeScrollLocks = 0;
+
+const preventTouchScroll = (event) => {
+  event.preventDefault();
+};
+
+const setPageScrollLocked = (locked) => {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return;
+
+  const root = document.documentElement;
+  const body = document.body;
+
+  if (locked) {
+    activeSwipeScrollLocks += 1;
+    if (activeSwipeScrollLocks === 1) {
+      root.classList.add('mobile-swipe-scroll-locked');
+      body.classList.add('mobile-swipe-scroll-locked');
+      window.addEventListener('touchmove', preventTouchScroll, { passive: false });
+    }
+    return;
+  }
+
+  activeSwipeScrollLocks = Math.max(0, activeSwipeScrollLocks - 1);
+  if (activeSwipeScrollLocks === 0) {
+    root.classList.remove('mobile-swipe-scroll-locked');
+    body.classList.remove('mobile-swipe-scroll-locked');
+    window.removeEventListener('touchmove', preventTouchScroll);
+  }
+};
+
+const lockGestureScroll = (gesture) => {
+  if (!gesture || gesture.scrollLocked) return;
+  gesture.scrollLocked = true;
+  setPageScrollLocked(true);
+};
+
+const releaseGestureScroll = (gesture) => {
+  if (!gesture?.scrollLocked) return;
+  gesture.scrollLocked = false;
+  setPageScrollLocked(false);
+};
+
+const safelyCapturePointer = (target, pointerId) => {
+  try {
+    target.setPointerCapture?.(pointerId);
+  } catch {
+    // Pointer capture can be unavailable for synthetic or interrupted touch streams.
+  }
+};
+
+const safelyReleasePointer = (target, pointerId) => {
+  try {
+    if (!target.hasPointerCapture || target.hasPointerCapture(pointerId)) {
+      target.releasePointerCapture?.(pointerId);
+    }
+  } catch {
+    // Releasing a pointer that the browser already cancelled is harmless.
+  }
+};
 
 const triggerTactileCue = (pattern) => {
   try {
@@ -113,9 +174,12 @@ const MobileSwipeTaskCard = ({ task, section, taskIndex, onMove }) => {
       pointerId,
       startX: event.clientX,
       startY: event.clientY,
+      lastX: event.clientX,
+      lastY: event.clientY,
       armed: false,
       progress: 0,
       target: null,
+      scrollLocked: false,
     };
     readyCueRef.current = false;
 
@@ -125,7 +189,8 @@ const MobileSwipeTaskCard = ({ task, section, taskIndex, onMove }) => {
 
       gesture.armed = true;
       suppressClickRef.current = true;
-      target.setPointerCapture?.(pointerId);
+      lockGestureScroll(gesture);
+      safelyCapturePointer(target, pointerId);
       setSwipe({ progress: 0, status: 'held', target: null, ready: false, blocked: false });
       triggerTactileCue([14, 24, 18]);
     }, LONG_PRESS_MS);
@@ -137,9 +202,14 @@ const MobileSwipeTaskCard = ({ task, section, taskIndex, onMove }) => {
 
     const dx = event.clientX - gesture.startX;
     const dy = event.clientY - gesture.startY;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    gesture.lastX = event.clientX;
+    gesture.lastY = event.clientY;
 
     if (!gesture.armed) {
-      if (Math.abs(dx) > MOVE_CANCEL_PX || Math.abs(dy) > MOVE_CANCEL_PX) {
+      if (absDy > MOVE_CANCEL_PX && absDy > absDx + VERTICAL_SCROLL_SLOP_PX) {
         clearPressTimer();
         gestureRef.current = null;
       }
@@ -147,6 +217,7 @@ const MobileSwipeTaskCard = ({ task, section, taskIndex, onMove }) => {
     }
 
     event.preventDefault();
+    lockGestureScroll(gesture);
     const direction = getTargetDirection(dx);
     const available = hasTarget(direction);
     const progress = direction ? clamp(Math.abs(dx) / SWIPE_COMMIT_PX, 0, 1) : 0;
@@ -178,9 +249,7 @@ const MobileSwipeTaskCard = ({ task, section, taskIndex, onMove }) => {
     if (!gesture || gesture.pointerId !== event.pointerId) return;
 
     const currentTarget = event.currentTarget;
-    if (currentTarget.hasPointerCapture?.(event.pointerId)) {
-      currentTarget.releasePointerCapture(event.pointerId);
-    }
+    safelyReleasePointer(currentTarget, event.pointerId);
 
     if (!gesture.armed) {
       gestureRef.current = null;
@@ -189,6 +258,7 @@ const MobileSwipeTaskCard = ({ task, section, taskIndex, onMove }) => {
 
     event.preventDefault();
     suppressClickRef.current = true;
+    releaseGestureScroll(gesture);
     gestureRef.current = null;
 
     const direction = gesture.target;
@@ -241,6 +311,14 @@ const MobileSwipeTaskCard = ({ task, section, taskIndex, onMove }) => {
     event.stopPropagation();
   };
 
+  useEffect(() => () => {
+    if (pressTimerRef.current) {
+      window.clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+    releaseGestureScroll(gestureRef.current);
+  }, []);
+
   const shellClassName = [
     'mobile-swipe-shell',
     hasPrevious ? 'has-previous' : '',
@@ -251,11 +329,20 @@ const MobileSwipeTaskCard = ({ task, section, taskIndex, onMove }) => {
     swipe.blocked ? 'swipe-blocked' : '',
   ].filter(Boolean).join(' ');
 
+  const swipeDirectionSign = swipe.target === 'previous' ? -1 : swipe.target === 'next' ? 1 : 0;
+
   return (
     <div
       className={shellClassName}
       style={{
         '--swipe-progress': swipe.progress,
+        '--swipe-progress-percent': `${Math.round(swipe.progress * 100)}%`,
+        '--swipe-target-lift': `${-(swipe.progress)}px`,
+        '--swipe-target-scale': 1 + (swipe.progress * 0.04),
+        '--swipe-card-shift': `${swipeDirectionSign * swipe.progress * 12}px`,
+        '--swipe-card-tilt': `${swipeDirectionSign * swipe.progress * 0.75}deg`,
+        '--swipe-affordance-lift': `${-10 - (swipe.progress * 4)}px`,
+        '--swipe-commit-shift': `${swipeDirectionSign * 22}px`,
       }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}

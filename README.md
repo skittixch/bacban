@@ -10,13 +10,15 @@ The project is built for people who want a real task board that local AI agents 
 
 ## Demo
 
-- Static dark-mode project overview: `docs/index.html`
-- Demo seed data: `demo/kanban-data.demo.json`
-- Demo setup guide: `docs/DEMO.md`
+- Hosted app demo entry: `docs/index.html`
+- Browser-local React demo bundle: `docs/demo-app/`
+- Demo seed data: `demo/kanban-data.demo.json` and `kanban-frontend/public/demo-data.json`
+- Local Docker demo setup guide: `docs/DEMO.md`
 
-The docs page describes the current app surface; it is not a fake product
-dashboard. The demo seed uses safe sample data. Live board state stays in
-ignored `kanban-data/`.
+The hosted demo opens the real BacBan app in browser-local storage mode. A
+visitor can add, edit, move, reset, import, and export cards without touching
+your live board data. Browser storage is best-effort only; clearing site data
+removes the demo board.
 
 ## What It Does
 
@@ -24,6 +26,7 @@ ignored `kanban-data/`.
 - Stores board state in local JSON, outside Git by default.
 - Supports Work and Life boards, custom columns, drag-and-drop cards, nested subtasks, references, due dates, project colors, undo/redo, and mobile views.
 - Highlights recently changed cards and brighter waiting-on cards.
+- Provides real app settings for theme, density, completed-card retention/fading, completion burst, storage mode, API URL, and JSON import/export.
 - Gives assistants stable fields: `updatedAt`, `doneAt`, `waitingOn`, and `references`.
 - Documents an event-to-board loop for Gmail, OpenCLAW/gog, Codex, and future `codex exec` or SDK runners.
 
@@ -73,7 +76,7 @@ Card creation is intake, not completion. A good loop does one bounded useful act
 |-- kanban-frontend/        React board UI
 |-- kanban-backend/         Express JSON persistence API
 |-- demo/                   Safe demo board seed
-|-- docs/                   Demo page and operator docs
+|-- docs/                   Hosted demo bundle and operator docs
 |-- codex/                  Agent runbooks and local-loop notes
 |-- .github/                CI, manual Pages workflow, templates, Dependabot
 `-- docker-compose.yml      Local production stack
@@ -81,8 +84,9 @@ Card creation is intake, not completion. A good loop does one bounded useful act
 
 ## Documentation
 
-- `docs/index.html`: dark, static demo/overview page. It can be deployed with GitHub Pages when the repo visibility/plan supports Pages.
-- `docs/DEMO.md`: seed and reset a safe sample board.
+- `docs/index.html`: launch page for the browser-local hosted demo.
+- `docs/demo-app/`: static React build of BacBan in demo/browser-storage mode.
+- `docs/DEMO.md`: seed and reset a safe sample board in Docker.
 - `docs/ONBOARDING.md`: board-only, WhatsApp, and Gmail-to-board setup path.
 - `docs/CODEX_GMAIL_SETUP.md`: deeper event architecture notes.
 - `docs/API.md`: local HTTP API contract.

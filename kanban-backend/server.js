@@ -50,6 +50,12 @@ async function ensureDataFile() {
         theme: "blue",
         darkMode: false,
         boardOrder: ["work", "life"],
+        settings: {
+          completedTaskRetentionDays: 3,
+          completedTaskFade: true,
+          completionCelebration: true,
+          cardDensity: "comfortable",
+        },
       };
       await fs.writeFile(DATA_FILE, JSON.stringify(defaultData, null, 2));
     }

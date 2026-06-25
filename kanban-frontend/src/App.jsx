@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Settings, Sun, Moon } from 'lucide-react';
+import { HardDrive, Plus, RotateCcw, Settings, Sun, Moon } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { KanbanProvider, useKanbanContext } from './contexts/KanbanContext';
 import Board from './components/Board';
@@ -8,6 +8,7 @@ import { FocusProvider, useFocus } from './contexts/FocusContext';
 import { ContextMenuProvider } from './contexts/ContextMenuContext';
 import ContextMenu from './components/ContextMenu';
 import MobileDemo from './components/MobileDemo';
+import SettingsPanel from './components/SettingsPanel';
 
 const themes = {
   blue: {
@@ -82,8 +83,9 @@ const KanbanBoardInner = () => {
   );
 
   const {
-    boards, boardOrder, isDarkMode, currentTheme, isLoading, saveStatus, projectColors,
-    setIsDarkMode, updateProjectColorName,
+    boards, boardOrder, isDarkMode, currentTheme, isLoading, saveStatus, projectColors, settings, storageConfig, isDemoMode,
+    setIsDarkMode, setCurrentTheme, updateProjectColorName,
+    updateSettings, updateStorageConfig, exportData, importData, resetDemoData,
     deletedTask, undoDelete, deletedSubtask, undoDeleteSubtask,
   } = kanban;
 
@@ -135,8 +137,14 @@ const KanbanBoardInner = () => {
     document.body.className = isDarkMode ? 'dark-mode' : '';
   }, [isDarkMode]);
 
+  const handleResetDemoData = async () => {
+    const ok = await resetDemoData?.();
+    setUndoNotification(ok ? 'Demo reset' : 'Demo reset failed');
+  };
+
   useEffect(() => {
     const handleConfetti = (e) => {
+      if (settings?.completionCelebration === false) return;
       const { x, y } = e.detail;
       confetti({
         particleCount: 150, spread: 80,
@@ -147,7 +155,7 @@ const KanbanBoardInner = () => {
     };
     window.addEventListener('taskDroppedToDone', handleConfetti);
     return () => window.removeEventListener('taskDroppedToDone', handleConfetti);
-  }, []);
+  }, [settings?.completionCelebration]);
 
   // Prevent body scroll when overlay is open
   useEffect(() => {
@@ -197,6 +205,7 @@ const KanbanBoardInner = () => {
     <div className={`app-shell min-h-screen transition-colors duration-300 ${
       isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'
     } ${mobileLayoutEnabled ? 'mobile-demo-active' : ''}`}
+    data-card-density={settings?.cardDensity || 'comfortable'}
     style={{
       '--theme-primary': themes[currentTheme]?.primary || '#3b82f6',
       '--theme-primary-hover': themes[currentTheme]?.hover || '#2563eb',
@@ -214,6 +223,20 @@ const KanbanBoardInner = () => {
           pointerEvents: stack.length > 0 ? 'none' : 'auto',
         }}
       >
+        {isDemoMode && (
+          <div className="demo-mode-banner" role="status">
+            <div className="demo-mode-copy">
+              <HardDrive size={16} />
+              <span>Demo mode</span>
+              <small>Saved in this browser only; site data may be cleared.</small>
+            </div>
+            <button type="button" onClick={handleResetDemoData}>
+              <RotateCcw size={14} />
+              <span>Reset sample board</span>
+            </button>
+          </div>
+        )}
+
         {mobileLayoutEnabled ? (
           <MobileDemo />
         ) : (
@@ -242,6 +265,8 @@ const KanbanBoardInner = () => {
                 className={`p-2 rounded-lg transition-all text-[var(--text-secondary)] hover:bg-[var(--surface-tertiary)] hover:text-[var(--text-primary)]`}
                 title="Settings (S)"
                 aria-label="Settings"
+                aria-expanded={showSettings}
+                aria-controls="settings-panel"
               >
                 <Settings size={18} />
               </button>
@@ -251,38 +276,23 @@ const KanbanBoardInner = () => {
 
         {/* Settings Panel */}
         {showSettings && (
-          <div className={`settings-panel border-b bg-[var(--surface-primary)] border-[var(--border-default)]`} style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
-            <div className="max-w-full mx-auto px-5 py-4">
-              <div className="flex items-center gap-8 flex-wrap">
-                <div>
-                  <p className={`text-[11px] uppercase tracking-wider font-semibold mb-2 text-[var(--text-muted)]`}>Shortcuts</p>
-                  <div className={`flex gap-4 flex-wrap text-xs text-[var(--text-muted)]`}>
-                    {[['Ctrl+Z','Undo'],['Ctrl+Shift+Z','Redo'],['T','Dark Mode'],['S','Settings'],['ESC','Close']].map(([k,v]) => (
-                      <span key={k}>
-                        <kbd className={`px-1.5 py-0.5 rounded text-[10px] font-mono bg-[var(--surface-tertiary)]`}>{k}</kbd> {v}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className={`border-l pl-8 border-[var(--border-default)]`}>
-                  <p className={`text-[11px] uppercase tracking-wider font-semibold mb-2 text-[var(--text-muted)]`}>Projects</p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {projectColors && Object.entries(projectColors).map(([hex, name]) => (
-                      <div key={hex} className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: hex }}></span>
-                        <input
-                          type="text"
-                          value={name}
-                          onChange={(e) => updateProjectColorName(hex, e.target.value)}
-                          className={`text-xs p-1 rounded border-none focus:ring-1 focus:ring-blue-500 outline-none w-24 bg-[var(--surface-input)] text-[var(--text-primary)]`}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <SettingsPanel
+            themes={themes}
+            currentTheme={currentTheme}
+            isDarkMode={isDarkMode}
+            settings={settings}
+            storageConfig={storageConfig}
+            projectColors={projectColors}
+            setCurrentTheme={setCurrentTheme}
+            setIsDarkMode={setIsDarkMode}
+            updateSettings={updateSettings}
+            updateStorageConfig={updateStorageConfig}
+            updateProjectColorName={updateProjectColorName}
+            exportData={exportData}
+            importData={importData}
+            isDemoMode={isDemoMode}
+            resetDemoData={resetDemoData}
+          />
         )}
 
         {/* Boards */}

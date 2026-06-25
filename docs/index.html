@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>BacBan | Local-first agent-aware kanban</title>
-    <meta name="description" content="BacBan is a local-first kanban board for human task tracking and bounded assistant writeback.">
+    <title>BacBan Demo</title>
+    <meta name="description" content="Open a browser-local BacBan demo that runs the real app UI with sample data.">
     <link rel="icon" href="assets/bacban-mark.svg" type="image/svg+xml">
     <link rel="stylesheet" href="assets/site.css">
   </head>
@@ -15,124 +15,64 @@
         <span>BacBan</span>
       </a>
       <nav class="nav" aria-label="Primary">
-        <a href="#current">Current app</a>
-        <a href="#demo">Demo</a>
-        <a href="#agents">Agent writes</a>
+        <a href="demo-app/">Launch demo</a>
+        <a href="https://github.com/skittixch/bacban">Repository</a>
         <a href="ONBOARDING.md">Onboarding</a>
       </nav>
     </header>
 
     <main>
-      <section class="hero">
+      <section class="hero demo-hero">
         <div class="hero-copy">
-          <h1>Local-first kanban for human work and bounded agent updates.</h1>
-          <p>BacBan is a real local board: a React frontend, an Express JSON API, Docker Compose, ignored runtime board data, and a documented write contract for Codex-style assistants.</p>
+          <h1>Use BacBan in your browser.</h1>
+          <p>Launches the actual React app with sample boards. Add, edit, drag, open cards, write notes, import, and export. Changes stay in this browser's local storage and can disappear if site data is cleared.</p>
           <div class="actions">
-            <a class="button" href="https://github.com/skittixch/bacban">View repository</a>
-            <a class="button secondary" href="DEMO.md">Run the demo seed</a>
+            <a class="button" href="demo-app/">Launch demo app</a>
+            <a class="button secondary" href="demo-app/?resetDemo=1">Reset and launch</a>
           </div>
         </div>
 
-        <aside class="fact-panel" aria-label="Current implementation facts">
-          <div class="fact-head">
-            <span>Current implementation</span>
-            <strong>No mock services</strong>
+        <div class="demo-preview" aria-label="Demo preview">
+          <div class="preview-top">
+            <span></span>
+            <span></span>
+            <span></span>
           </div>
-          <dl>
-            <div>
-              <dt>Frontend</dt>
-              <dd>React app served by nginx on port 3000.</dd>
-            </div>
-            <div>
-              <dt>Backend</dt>
-              <dd>Express API on port 3001 with full-state JSON reads and writes.</dd>
-            </div>
-            <div>
-              <dt>State</dt>
-              <dd>Local `kanban-data/kanban-data.json`, ignored by Git.</dd>
-            </div>
-            <div>
-              <dt>Automation</dt>
-              <dd>Assistant updates must back up, GET, POST, health-check, and read back.</dd>
-            </div>
-          </dl>
-        </aside>
+          <div class="preview-board">
+            <section>
+              <h2>To Do</h2>
+              <p>Triage an incoming client email</p>
+              <p>Prepare release notes</p>
+            </section>
+            <section>
+              <h2>In Progress</h2>
+              <p>Run one bounded assistant loop</p>
+            </section>
+            <section>
+              <h2>Done</h2>
+              <p>Connect local board API health check</p>
+            </section>
+          </div>
+        </div>
       </section>
 
-      <section class="section surface" id="current">
+      <section class="section demo-details">
         <div>
-          <h2>What the app actually supports today.</h2>
-          <p>This demo page describes the current board surface rather than inventing a future dashboard. The running app is the source of truth.</p>
+          <h2>The demo is the app.</h2>
+          <p>It uses the same board UI and local browser persistence mode that the full project can use. No Docker API is required for the public demo path.</p>
         </div>
-        <div class="surface-grid">
-          <article>
-            <h3>Boards and columns</h3>
-            <p>Work and Life boards, configurable column order/titles, collapsed board state, and persistent board ordering.</p>
-          </article>
-          <article>
-            <h3>Cards</h3>
-            <p>Card text, project color, due date, references, `waitingOn`, `updatedAt`, `doneAt`, and recent-change highlighting.</p>
-          </article>
-          <article>
-            <h3>Nested subtasks</h3>
-            <p>Card-level To Do / Doing / Done subtask lists with a mobile-friendly nested view.</p>
-          </article>
-          <article>
-            <h3>Local persistence</h3>
-            <p>The backend writes the whole board document to local JSON. The API intentionally stays small and auditable.</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="section split" id="demo">
-        <div>
-          <h2>Run a safe demo without touching live board data.</h2>
-          <p>The repository includes a tracked demo seed with Work and Life boards, sample cards, due dates, references, waiting-on status, and subtasks. It is copied into ignored runtime state only when you explicitly seed it.</p>
-          <ul class="checklist">
-            <li>`demo/kanban-data.demo.json` is safe to publish.</li>
-            <li>`kanban-data/` remains ignored and should contain only local runtime data.</li>
-            <li>`docs/DEMO.md` shows how to seed, back up, and reset.</li>
-          </ul>
-        </div>
-        <pre class="terminal"><code>git clone https://github.com/skittixch/bacban.git
-cd bacban
-docker compose up -d --build
-Invoke-RestMethod -Uri 'http://127.0.0.1:3001/health'</code></pre>
-      </section>
-
-      <section class="section" id="agents">
-        <div class="section-heading">
-          <h2>Agent writes are deliberately boring.</h2>
-          <p>BacBan does not ask an assistant to improvise persistence. The write path is a simple checklist with evidence and readback.</p>
-        </div>
-        <ol class="steps">
-          <li>
-            <span>01</span>
-            <strong>Back up</strong>
-            <p>Copy the runtime JSON before changing board state.</p>
-          </li>
-          <li>
-            <span>02</span>
-            <strong>Read full state</strong>
-            <p>GET `/api/data` and match existing cards before creating new ones.</p>
-          </li>
-          <li>
-            <span>03</span>
-            <strong>Post full state</strong>
-            <p>Modify only needed fields, validate JSON, then POST the full document.</p>
-          </li>
-          <li>
-            <span>04</span>
-            <strong>Read back</strong>
-            <p>Verify health and the changed card before reporting completion or blocked state.</p>
-          </li>
-        </ol>
+        <ul class="checklist">
+          <li>Seed data loads from the tracked demo board.</li>
+          <li>Writes are stored under this site's browser local storage.</li>
+          <li>The in-app reset button restores the sample board.</li>
+          <li>Export and import let you keep or reload a board JSON file.</li>
+        </ul>
       </section>
     </main>
 
     <footer class="footer">
-      <span>BacBan is private-first until local runbooks and operator-specific details are sanitized for public release.</span>
-      <a href="GITHUB_PUBLISHING.md">Publishing checklist</a>
+      <span>No account, sync, or persistence guarantee in the hosted demo.</span>
+      <a href="DEMO.md">Local Docker demo notes</a>
     </footer>
   </body>
 </html>

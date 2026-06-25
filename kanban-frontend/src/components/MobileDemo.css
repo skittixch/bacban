@@ -146,14 +146,32 @@
 
 .mobile-swipe-shell {
   --swipe-progress: 0;
+  --swipe-card-shift: 0px;
+  --swipe-card-tilt: 0deg;
+  --swipe-affordance-lift: -10px;
+  --swipe-commit-shift: 0px;
   position: relative;
   isolation: isolate;
   min-width: 0;
   margin: 0 -8px;
   padding: 0 8px;
   touch-action: pan-y;
+  overscroll-behavior: contain;
   user-select: none;
   -webkit-user-select: none;
+}
+
+html.mobile-swipe-scroll-locked,
+body.mobile-swipe-scroll-locked {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.mobile-swipe-shell.is-held,
+.mobile-swipe-shell.is-dragging,
+.mobile-swipe-shell.is-commit-previous,
+.mobile-swipe-shell.is-commit-next {
+  touch-action: none;
 }
 
 .mobile-swipe-shell::before {
@@ -195,9 +213,11 @@
   position: relative;
   z-index: 2;
   transition:
+    transform 115ms cubic-bezier(0.2, 0.8, 0.2, 1),
     filter 140ms ease,
     box-shadow 140ms ease;
   touch-action: pan-y;
+  will-change: transform, filter;
 }
 
 .mobile-swipe-shell.is-held .mobile-swipe-card,
@@ -205,8 +225,22 @@
   filter: brightness(1.03) saturate(1.05);
 }
 
+.mobile-swipe-shell.is-held .mobile-swipe-card {
+  transform: translate3d(0, -1px, 0) scale(1.002);
+}
+
+.mobile-swipe-shell.is-dragging .mobile-swipe-card {
+  transform: translate3d(var(--swipe-card-shift), -1px, 0) rotate(var(--swipe-card-tilt));
+}
+
 .mobile-swipe-shell.swipe-ready .mobile-swipe-card {
+  transform: translate3d(var(--swipe-card-shift), -2px, 0) rotate(var(--swipe-card-tilt)) scale(1.006);
   filter: brightness(1.06) saturate(1.08);
+}
+
+.mobile-swipe-shell.is-commit-previous .mobile-swipe-card,
+.mobile-swipe-shell.is-commit-next .mobile-swipe-card {
+  animation: mobileSwipeCommitSnap 170ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .mobile-swipe-affordance {
@@ -245,7 +279,7 @@
 .mobile-swipe-shell.is-commit-previous .mobile-swipe-affordance,
 .mobile-swipe-shell.is-commit-next .mobile-swipe-affordance {
   opacity: 1;
-  transform: translate3d(-50%, -10px, 0) scale(1);
+  transform: translate3d(-50%, var(--swipe-affordance-lift), 0) scale(1);
 }
 
 .mobile-swipe-shell.swipe-ready .mobile-swipe-affordance {
@@ -297,11 +331,11 @@
   color: white;
   opacity: 1;
   background: color-mix(in srgb, var(--theme-primary) 72%, transparent);
-  transform: translateY(calc(var(--swipe-progress) * -1px)) scale(calc(1 + (var(--swipe-progress) * 0.04)));
+  transform: translateY(var(--swipe-target-lift)) scale(var(--swipe-target-scale));
 }
 
 .mobile-swipe-shell.swipe-ready .mobile-swipe-target.active {
-  animation: mobileSwipeReadyPulse 760ms ease-in-out infinite;
+  animation: mobileSwipeReadyPulse 620ms ease-in-out infinite;
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.22),
     0 0 18px color-mix(in srgb, var(--theme-primary) 42%, transparent);
@@ -322,7 +356,7 @@
 
 .mobile-swipe-progress span {
   display: block;
-  width: calc(var(--swipe-progress) * 100%);
+  width: var(--swipe-progress-percent);
   height: 100%;
   border-radius: inherit;
   background: var(--theme-primary);
@@ -366,9 +400,23 @@
 @keyframes mobileSwipeReadyPulse {
   0%, 100% {
     filter: brightness(1);
+    transform: translateY(var(--swipe-target-lift)) scale(var(--swipe-target-scale));
   }
   50% {
     filter: brightness(1.12);
+    transform: translateY(calc(var(--swipe-target-lift) - 1px)) scale(calc(var(--swipe-target-scale) + 0.015));
+  }
+}
+
+@keyframes mobileSwipeCommitSnap {
+  0% {
+    transform: translate3d(var(--swipe-card-shift), -2px, 0) rotate(var(--swipe-card-tilt)) scale(1.006);
+  }
+  48% {
+    transform: translate3d(var(--swipe-commit-shift), -3px, 0) rotate(var(--swipe-card-tilt)) scale(1.012);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
   }
 }
 

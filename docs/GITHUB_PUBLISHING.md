@@ -14,7 +14,8 @@ Use this split:
 
 - Private repo: OK for the current local project after checking ignored private state is not tracked.
 - Public repo: OK only after replacing local paths, account-specific runbooks, and operator-specific workflow notes with generic templates.
-- Demo: safe to publish from `demo/kanban-data.demo.json`; do not publish `kanban-data/`.
+- Demo: safe to publish from `demo/kanban-data.demo.json` and `docs/demo-app/`;
+  do not publish `kanban-data/`.
 
 ## Before Creating a Remote
 
@@ -76,6 +77,7 @@ The GitHub repo should include:
 - `docker-compose.yml`
 - `demo/kanban-data.demo.json`
 - `docs/index.html`
+- `docs/demo-app/`
 - `docs/DEMO.md`
 - `docs/ONBOARDING.md`
 - `docs/API.md`

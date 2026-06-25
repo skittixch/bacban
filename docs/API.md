@@ -59,10 +59,16 @@ and makes assistant writes auditable.
 - `tasks`: map of column ids to card arrays.
 - `columnOrder`: display order for a board's columns.
 - `columnTitles`: human-readable column names.
+- `settings`: app preferences such as completed-card retention, completed-card
+  fading, completion burst, and card density.
 - `updatedAt`: UTC ISO timestamp for agent-created or agent-updated cards.
 - `doneAt`: UTC ISO timestamp when a card moves to done/completed.
 - `waitingOn`: short reason the card needs a person or external system.
 - `references`: HTML notes shown in the card detail view.
+
+Storage-source preferences are browser-local because they decide where the app
+loads the board document from. The default remains the Docker JSON API; the UI
+can also keep a browser-local copy and import/export full board JSON files.
 
 ## Automation Boundary
 

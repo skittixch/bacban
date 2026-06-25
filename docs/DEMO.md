@@ -1,11 +1,30 @@
 # BacBan Demo
 
-This demo gives a new user a populated board without committing or overwriting live board data. The app always reads and writes `kanban-data/kanban-data.json`; the tracked demo file lives separately at `demo/kanban-data.demo.json`.
+This repo has two demo paths:
 
-For a visual overview before running Docker, open `docs/index.html` or publish the
-`docs/` folder with GitHub Pages.
+- Hosted browser demo: open `docs/index.html`, then launch `docs/demo-app/`. It
+  runs the real React app with browser-local storage. No Docker API is required.
+- Local Docker demo: seed `kanban-data/kanban-data.json` from
+  `demo/kanban-data.demo.json`.
 
-## Run an Empty Board
+The hosted demo writes to the visitor's browser local storage and has no
+persistence guarantee. Clearing site data removes it. The local Docker demo
+writes to ignored runtime board data under `kanban-data/`.
+
+## Hosted Browser Demo
+
+When `docs/` is served by GitHub Pages or a static server, open:
+
+```text
+docs/index.html
+docs/demo-app/
+```
+
+The app seeds itself from `kanban-frontend/public/demo-data.json` on first load.
+Visitors can use the in-app reset button or `docs/demo-app/?resetDemo=1` to
+restore the sample board.
+
+## Run an Empty Docker Board
 
 ```powershell
 git clone <repo-url> bacban

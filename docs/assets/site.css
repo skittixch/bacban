@@ -11,6 +11,8 @@
   --accent: #38bdf8;
   --accent-2: #22d3ee;
   --green: #34d399;
+  --rose: #fb7185;
+  --yellow: #facc15;
   --shadow: 0 28px 90px rgba(0, 0, 0, 0.42);
 }
 
@@ -138,6 +140,91 @@ a {
   background: transparent;
   color: var(--ink);
   border-color: var(--line);
+}
+
+.demo-hero {
+  grid-template-columns: minmax(0, 0.9fr) minmax(360px, 0.82fr);
+}
+
+.demo-preview {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(9, 14, 26, 0.94);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.preview-top {
+  display: flex;
+  gap: 8px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(16, 24, 39, 0.92);
+}
+
+.preview-top span {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--rose);
+}
+
+.preview-top span:nth-child(2) {
+  background: var(--yellow);
+}
+
+.preview-top span:nth-child(3) {
+  background: var(--green);
+}
+
+.preview-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px;
+}
+
+.preview-board section {
+  min-width: 0;
+  border: 1px solid rgba(36, 50, 70, 0.74);
+  border-radius: 8px;
+  background: rgba(16, 24, 39, 0.78);
+  padding: 12px;
+}
+
+.preview-board h2 {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.preview-board p {
+  margin: 8px 0 0;
+  border-left: 3px solid var(--accent);
+  border-radius: 7px;
+  background: rgba(238, 246, 255, 0.06);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 680;
+  line-height: 1.35;
+  padding: 10px;
+}
+
+.preview-board section:nth-child(2) p {
+  border-left-color: var(--rose);
+}
+
+.preview-board section:nth-child(3) p {
+  border-left-color: var(--green);
+}
+
+.demo-details {
+  display: grid;
+  grid-template-columns: minmax(0, 0.86fr) minmax(300px, 0.7fr);
+  gap: clamp(28px, 5vw, 62px);
+  align-items: start;
 }
 
 .fact-panel {
@@ -351,7 +438,8 @@ a {
 @media (max-width: 920px) {
   .hero,
   .surface,
-  .split {
+  .split,
+  .demo-details {
     grid-template-columns: 1fr;
   }
 
@@ -384,6 +472,7 @@ a {
 
   .hero-copy,
   .fact-panel,
+  .demo-preview,
   .section,
   .terminal {
     width: 100%;
@@ -416,6 +505,7 @@ a {
   }
 
   .surface-grid,
+  .preview-board,
   .steps {
     grid-template-columns: 1fr;
   }
@@ -429,6 +519,7 @@ a {
 @media (max-width: 520px) {
   .hero-copy,
   .fact-panel,
+  .demo-preview,
   .section,
   .terminal {
     max-width: 346px;

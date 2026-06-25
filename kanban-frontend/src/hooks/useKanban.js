@@ -1,17 +1,53 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-const getApiUrl = () => {
+const getDefaultApiUrl = () => {
   const envUrl = process.env.REACT_APP_API_URL;
   // If a custom production URL is provided and it's not localhost, use it
   if (envUrl && !envUrl.includes('localhost')) {
     return envUrl;
   }
+  if (typeof window === 'undefined') {
+    return 'http://127.0.0.1:3001';
+  }
   // Otherwise, use the current hostname (works for localhost, Tailscale IPs, etc.)
   return `${window.location.protocol}//${window.location.hostname}:3001`;
 };
 
-const API_URL = getApiUrl();
 const REMOTE_REFRESH_INTERVAL_MS = 5000;
+const STORAGE_CONFIG_KEY = 'bacban.storageConfig';
+const BROWSER_DATA_KEY = 'bacban.browserData';
+const DEMO_BROWSER_DATA_KEY = 'bacban.demo.browserData';
+const STORAGE_MODES = ['server', 'browser'];
+
+const DEFAULT_STORAGE_CONFIG = {
+  mode: 'server',
+  apiUrl: '',
+};
+
+const DEFAULT_SETTINGS = {
+  completedTaskRetentionDays: 3,
+  completedTaskFade: true,
+  completionCelebration: true,
+  cardDensity: 'comfortable',
+};
+
+const isDemoMode = () => {
+  if (typeof window === 'undefined') {
+    return process.env.REACT_APP_BACBAN_DEMO === 'true';
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  return process.env.REACT_APP_BACBAN_DEMO === 'true'
+    || params.get('demo') === '1'
+    || window.location.pathname.includes('/demo-app');
+};
+
+const demoUrlRequestsReset = () => {
+  if (typeof window === 'undefined') return false;
+  return new URLSearchParams(window.location.search).get('resetDemo') === '1';
+};
+
+const getBrowserDataKey = () => (isDemoMode() ? DEMO_BROWSER_DATA_KEY : BROWSER_DATA_KEY);
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 const nowIso = () => new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
@@ -30,6 +66,14 @@ const createDefaultBoard = (title = 'New Board') => ({
   columnOrder: ['todo', 'inprogress', 'done'],
   columnTitles: { todo: 'To Do', inprogress: 'In Progress', done: 'Done' },
   collapsed: false,
+});
+
+const createDefaultBoards = () => ({
+  work: createDefaultBoard('Work'),
+  life: {
+    ...createDefaultBoard('Life'),
+    columnTitles: { todo: 'Personal', inprogress: 'Doing', done: 'Completed' },
+  },
 });
 
 const DEFAULT_SUBTASK_COLUMNS = ['todo', 'doing', 'done'];
@@ -91,22 +135,111 @@ const DEFAULT_PROJECT_COLORS = {
   '#ec4899': 'Project Pink',
 };
 
+const normalizeRetentionDays = (value) => {
+  const parsed = Number(value);
+  if (parsed === 0) return 0;
+  if (!Number.isFinite(parsed)) return DEFAULT_SETTINGS.completedTaskRetentionDays;
+  return Math.min(90, Math.max(1, Math.round(parsed)));
+};
+
+const normalizeSettings = (settings = {}) => ({
+  completedTaskRetentionDays: normalizeRetentionDays(settings.completedTaskRetentionDays),
+  completedTaskFade: settings.completedTaskFade !== false,
+  completionCelebration: settings.completionCelebration !== false,
+  cardDensity: settings.cardDensity === 'compact' ? 'compact' : 'comfortable',
+});
+
+const normalizeStorageConfig = (config = {}) => ({
+  mode: isDemoMode() ? 'browser' : STORAGE_MODES.includes(config.mode) ? config.mode : DEFAULT_STORAGE_CONFIG.mode,
+  apiUrl: typeof config.apiUrl === 'string' ? config.apiUrl.trim() : '',
+});
+
+const loadStorageConfig = () => {
+  if (isDemoMode()) return { mode: 'browser', apiUrl: '' };
+  if (typeof window === 'undefined') return DEFAULT_STORAGE_CONFIG;
+  try {
+    const stored = window.localStorage.getItem(STORAGE_CONFIG_KEY);
+    return normalizeStorageConfig(stored ? JSON.parse(stored) : DEFAULT_STORAGE_CONFIG);
+  } catch {
+    return DEFAULT_STORAGE_CONFIG;
+  }
+};
+
+const saveStorageConfig = (config) => {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(STORAGE_CONFIG_KEY, JSON.stringify(normalizeStorageConfig(config)));
+};
+
+const resolveApiUrl = (config) => normalizeStorageConfig(config).apiUrl || getDefaultApiUrl();
+
+const readBrowserData = (key = getBrowserDataKey()) => {
+  if (typeof window === 'undefined') return null;
+  const raw = window.localStorage.getItem(key);
+  return raw ? JSON.parse(raw) : null;
+};
+
+const writeBrowserData = (data, key = getBrowserDataKey()) => {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(key, JSON.stringify(data));
+};
+
+const getStoredData = ({
+  boards,
+  theme,
+  darkMode,
+  boardOrder,
+  projectColors,
+  settings,
+}) => ({
+  boards: boards || createDefaultBoards(),
+  theme: theme || 'blue',
+  darkMode: Boolean(darkMode),
+  boardOrder: boardOrder || Object.keys(boards || {}),
+  projectColors: projectColors || DEFAULT_PROJECT_COLORS,
+  settings: normalizeSettings(settings),
+});
+
+const shouldKeepCompletedTask = (task, settings) => {
+  const doneAt = parseTimestamp(task.doneAt);
+  if (!doneAt) return true;
+
+  const retentionDays = normalizeSettings(settings).completedTaskRetentionDays;
+  if (retentionDays === 0) return true;
+
+  const daysOld = (Date.now() - doneAt) / (1000 * 60 * 60 * 24);
+  return daysOld < retentionDays;
+};
+
 const prepareLoadedData = (data) => {
-  const next = JSON.parse(JSON.stringify(data));
+  const next = JSON.parse(JSON.stringify(data || {}));
+  next.boards = next.boards || createDefaultBoards();
+  next.theme = next.theme || 'blue';
+  next.darkMode = Boolean(next.darkMode);
+  next.boardOrder = next.boardOrder || Object.keys(next.boards);
+  next.projectColors = next.projectColors || DEFAULT_PROJECT_COLORS;
+  next.settings = normalizeSettings(next.settings);
+
   if (next.boards) {
     for (const boardId in next.boards) {
       const board = next.boards[boardId];
       if (board.tasks) {
         for (const columnId in board.tasks) {
-          board.tasks[columnId] = board.tasks[columnId].filter(t => {
-            const doneAt = parseTimestamp(t.doneAt);
-            return !doneAt || (Date.now() - doneAt) / (1000 * 60 * 60 * 24) < 3;
-          });
+          board.tasks[columnId] = board.tasks[columnId].filter(t => shouldKeepCompletedTask(t, next.settings));
         }
       }
     }
   }
   return next;
+};
+
+const loadDemoSeedData = async () => {
+  const publicUrl = process.env.PUBLIC_URL || '';
+  const seedUrl = `${publicUrl}/demo-data.json`;
+  const response = await fetch(seedUrl, { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(`Could not load demo seed from ${seedUrl}.`);
+  }
+  return getStoredData(prepareLoadedData(await response.json()));
 };
 
 const getDataSnapshot = (data) => JSON.stringify({
@@ -115,21 +248,18 @@ const getDataSnapshot = (data) => JSON.stringify({
   darkMode: data.darkMode || false,
   boardOrder: data.boardOrder || Object.keys(data.boards || {}),
   projectColors: data.projectColors || DEFAULT_PROJECT_COLORS,
+  settings: normalizeSettings(data.settings),
 });
 
 export default function useKanban() {
-  const [boards, setBoards] = useState({
-    work: createDefaultBoard('Work'),
-    life: {
-      ...createDefaultBoard('Life'),
-      columnTitles: { todo: 'Personal', inprogress: 'Doing', done: 'Completed' },
-    },
-  });
+  const [boards, setBoards] = useState(createDefaultBoards);
 
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentTheme, setCurrentTheme] = useState('blue');
   const [boardOrder, setBoardOrder] = useState(['work', 'life']);
   const [projectColors, setProjectColors] = useState(DEFAULT_PROJECT_COLORS);
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [storageConfig, setStorageConfig] = useState(loadStorageConfig);
   const [isLoading, setIsLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState('saved');
 
@@ -149,6 +279,7 @@ export default function useKanban() {
   const [deletedSubtask, setDeletedSubtask] = useState(null);
   const undoTimeoutRef = useRef(null);
   const saveTimeoutRef = useRef(null);
+  const storageConfigRef = useRef(storageConfig);
   const initialLoadDone = useRef(false);
   const applyingRemoteDataRef = useRef(false);
   const pendingLocalSaveRef = useRef(false);
@@ -164,6 +295,19 @@ export default function useKanban() {
   const MAX_HISTORY = 50;
 
   // ---- Data persistence ----
+
+  useEffect(() => {
+    storageConfigRef.current = storageConfig;
+  }, [storageConfig]);
+
+  const getCurrentData = useCallback(() => getStoredData({
+    boards,
+    theme: currentTheme,
+    darkMode: isDarkMode,
+    boardOrder,
+    projectColors,
+    settings,
+  }), [boards, currentTheme, isDarkMode, boardOrder, projectColors, settings]);
 
   const applyRemoteData = useCallback((data, { resetHistory = false } = {}) => {
     const preparedData = prepareLoadedData(data);
@@ -181,23 +325,85 @@ export default function useKanban() {
     setIsDarkMode(preparedData.darkMode || false);
     setBoardOrder(boardOrderToApply);
     setProjectColors(preparedData.projectColors || DEFAULT_PROJECT_COLORS);
+    setSettings(preparedData.settings || DEFAULT_SETTINGS);
   }, []);
 
-  const loadData = useCallback(async ({ quiet = false, initial = false } = {}) => {
-    try {
-      const response = await fetch(`${API_URL}/api/data`);
-      if (response.ok) {
-        const data = await response.json();
-        const remoteSnapshot = getDataSnapshot(prepareLoadedData(data));
+  const persistDataNow = useCallback(async (dataToSave, config = storageConfigRef.current) => {
+    const activeConfig = normalizeStorageConfig(config);
+    const normalizedData = getStoredData(dataToSave);
 
-        if (initial || remoteSnapshot !== lastRemoteSnapshotRef.current) {
-          if (!initial && pendingLocalSaveRef.current) return;
-          applyRemoteData(data, { resetHistory: !initial });
-        }
+    if (activeConfig.mode === 'browser') {
+      writeBrowserData(normalizedData);
+      lastRemoteSnapshotRef.current = getDataSnapshot(normalizedData);
+      return true;
+    }
+
+    try {
+      const response = await fetch(`${resolveApiUrl(activeConfig)}/api/data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(normalizedData),
+      });
+      if (response.ok) {
+        lastRemoteSnapshotRef.current = getDataSnapshot(normalizedData);
       }
+      return response.ok;
+    } catch (error) {
+      console.error('Failed to save:', error);
+      return false;
+    }
+  }, []);
+
+  const loadData = useCallback(async ({ quiet = false, initial = false, config = storageConfigRef.current } = {}) => {
+    const activeConfig = normalizeStorageConfig(config);
+
+    try {
+      if (activeConfig.mode === 'browser') {
+        const shouldResetDemo = isDemoMode() && demoUrlRequestsReset();
+        let browserData = shouldResetDemo ? null : readBrowserData();
+
+        if (!browserData && isDemoMode()) {
+          browserData = await loadDemoSeedData();
+        }
+
+        browserData = browserData || getStoredData({
+          boards: createDefaultBoards(),
+          theme: 'blue',
+          darkMode: false,
+          boardOrder: ['work', 'life'],
+          projectColors: DEFAULT_PROJECT_COLORS,
+          settings: DEFAULT_SETTINGS,
+        });
+
+        writeBrowserData(browserData);
+
+        const remoteSnapshot = getDataSnapshot(prepareLoadedData(browserData));
+        if (initial || remoteSnapshot !== lastRemoteSnapshotRef.current) {
+          if (!initial && pendingLocalSaveRef.current) return true;
+          applyRemoteData(browserData, { resetHistory: !initial });
+        }
+        setSaveStatus('saved');
+        return true;
+      }
+
+      const response = await fetch(`${resolveApiUrl(activeConfig)}/api/data`);
+      if (!response.ok) {
+        if (!quiet) setSaveStatus('error');
+        return false;
+      }
+
+      const data = await response.json();
+      const remoteSnapshot = getDataSnapshot(prepareLoadedData(data));
+
+      if (initial || remoteSnapshot !== lastRemoteSnapshotRef.current) {
+        if (!initial && pendingLocalSaveRef.current) return true;
+        applyRemoteData(data, { resetHistory: !initial });
+      }
+      return true;
     } catch (error) {
       console.error('Failed to load data:', error);
       if (!quiet) setSaveStatus('error');
+      return false;
     } finally {
       setIsLoading(false);
       initialLoadDone.current = true;
@@ -211,28 +417,17 @@ export default function useKanban() {
 
     saveTimeoutRef.current = setTimeout(async () => {
       saveTimeoutRef.current = null;
-      try {
-        const response = await fetch(`${API_URL}/api/data`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(dataToSave),
-        });
-        if (response.ok) {
-          lastRemoteSnapshotRef.current = getDataSnapshot(dataToSave);
-        }
-        setSaveStatus(response.ok ? 'saved' : 'error');
-      } catch (error) {
-        console.error('Failed to save:', error);
-        setSaveStatus('error');
-      } finally {
-        pendingLocalSaveRef.current = false;
-      }
+      const ok = await persistDataNow(dataToSave);
+      setSaveStatus(ok ? 'saved' : 'error');
+      pendingLocalSaveRef.current = false;
     }, 500);
-  }, []);
+  }, [persistDataNow]);
 
   useEffect(() => { loadData({ initial: true }); }, [loadData]);
 
   useEffect(() => {
+    if (storageConfig.mode !== 'server') return undefined;
+
     const refreshFromServer = () => {
       if (!initialLoadDone.current || document.hidden || pendingLocalSaveRef.current) return;
       loadData({ quiet: true });
@@ -252,7 +447,7 @@ export default function useKanban() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [loadData]);
+  }, [loadData, storageConfig.mode]);
 
   useEffect(() => {
     if (initialLoadDone.current) {
@@ -261,9 +456,9 @@ export default function useKanban() {
         setSaveStatus('saved');
         return;
       }
-      saveData({ boards, theme: currentTheme, darkMode: isDarkMode, boardOrder, projectColors });
+      saveData({ boards, theme: currentTheme, darkMode: isDarkMode, boardOrder, projectColors, settings });
     }
-  }, [boards, currentTheme, isDarkMode, boardOrder, projectColors, saveData]);
+  }, [boards, currentTheme, isDarkMode, boardOrder, projectColors, settings, saveData]);
 
   useEffect(() => {
     return () => {
@@ -283,14 +478,7 @@ export default function useKanban() {
           const board = newBoards[boardId];
           for (const columnId in board.tasks) {
             const originalLength = board.tasks[columnId].length;
-            board.tasks[columnId] = board.tasks[columnId].filter(task => {
-              if (task.doneAt) {
-                const doneAt = parseTimestamp(task.doneAt);
-                const daysOld = doneAt ? (Date.now() - doneAt) / (1000 * 60 * 60 * 24) : 0;
-                return daysOld < 3.0;
-              }
-              return true;
-            });
+            board.tasks[columnId] = board.tasks[columnId].filter(task => shouldKeepCompletedTask(task, settings));
             if (board.tasks[columnId].length !== originalLength) hasChanges = true;
           }
         }
@@ -298,7 +486,7 @@ export default function useKanban() {
       });
     }, 60000); // Check every minute
     return () => clearInterval(interval);
-  }, []);
+  }, [settings]);
 
   // ---- History tracking ----
   useEffect(() => {
@@ -364,6 +552,64 @@ export default function useKanban() {
     setHistoryVersion(v => v + 1);
     return true;
   }, []);
+
+  // ---- App settings ----
+
+  const updateSettings = useCallback((patch) => {
+    setSettings(prev => normalizeSettings({ ...prev, ...patch }));
+  }, []);
+
+  const updateStorageConfig = useCallback(async (patch) => {
+    const nextConfig = normalizeStorageConfig({ ...storageConfig, ...patch });
+
+    if (nextConfig.mode === 'browser') {
+      writeBrowserData(getCurrentData());
+    }
+
+    saveStorageConfig(nextConfig);
+    setStorageConfig(nextConfig);
+    setSaveStatus('saving');
+
+    const loaded = await loadData({ initial: true, config: nextConfig });
+    setSaveStatus(loaded ? 'saved' : 'error');
+    return loaded;
+  }, [storageConfig, getCurrentData, loadData]);
+
+  const exportData = useCallback(() => getCurrentData(), [getCurrentData]);
+
+  const importData = useCallback(async (data) => {
+    if (!data || typeof data !== 'object' || !data.boards) {
+      throw new Error('Imported file must contain a BacBan board document.');
+    }
+
+    const preparedData = prepareLoadedData(data);
+    const dataToSave = getStoredData(preparedData);
+
+    applyRemoteData(dataToSave, { resetHistory: true });
+    setSaveStatus('saving');
+
+    const saved = await persistDataNow(dataToSave);
+    setSaveStatus(saved ? 'saved' : 'error');
+    return saved;
+  }, [applyRemoteData, persistDataNow]);
+
+  const resetDemoData = useCallback(async () => {
+    if (!isDemoMode()) return false;
+
+    setSaveStatus('saving');
+    try {
+      const demoData = await loadDemoSeedData();
+      writeBrowserData(demoData);
+      applyRemoteData(demoData, { resetHistory: true });
+      lastRemoteSnapshotRef.current = getDataSnapshot(demoData);
+      setSaveStatus('saved');
+      return true;
+    } catch (error) {
+      console.error('Failed to reset demo data:', error);
+      setSaveStatus('error');
+      return false;
+    }
+  }, [applyRemoteData]);
 
   // ---- CRUD ----
 
@@ -942,8 +1188,10 @@ export default function useKanban() {
   };
 
   return {
-    boards, boardOrder, isDarkMode, currentTheme, isLoading, saveStatus, projectColors,
+    boards, boardOrder, isDarkMode, currentTheme, isLoading, saveStatus, projectColors, settings, storageConfig,
+    isDemoMode: isDemoMode(),
     setIsDarkMode, setCurrentTheme, updateProjectColorName,
+    updateSettings, updateStorageConfig, exportData, importData, resetDemoData,
     addTask, deleteTask, duplicateTask, updateTask, updateTaskPriority, updateTaskColor, updateTaskReferences, updateTaskWaitingOn, updateTaskDueDate,
     moveTaskToAdjacentColumn,
     undoDelete, deletedTask, undoDeleteSubtask, deletedSubtask,
