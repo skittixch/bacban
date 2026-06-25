@@ -5,13 +5,21 @@ import { useContextMenu } from '../contexts/ContextMenuContext';
 import TaskCard from './TaskCard';
 import './MobileDemo.css';
 
-const LONG_PRESS_MS = 1000;
-const SWIPE_COMMIT_PX = 72;
+const LONG_PRESS_MS = 650;
+const SWIPE_COMMIT_PX = 136;
 const SWIPE_DEAD_ZONE_PX = 10;
 const MOVE_CANCEL_PX = 14;
 const INTERACTIVE_SELECTOR = 'button, a, input, textarea, select, [contenteditable="true"], [role="button"]';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+const triggerTactileCue = (pattern) => {
+  try {
+    window.navigator?.vibrate?.(pattern);
+  } catch {
+    // Mobile web haptics are best-effort and ignored by some browsers.
+  }
+};
 
 const getColumnPosition = (columnIndex, columnCount) => {
   if (columnCount <= 1) return 'only';
@@ -60,6 +68,7 @@ const MobileSwipeTaskCard = ({ task, section, taskIndex, onMove }) => {
   const pressTimerRef = useRef(null);
   const gestureRef = useRef(null);
   const suppressClickRef = useRef(false);
+  const readyCueRef = useRef(false);
   const [swipe, setSwipe] = useState({
     progress: 0,
     status: 'idle',
@@ -108,6 +117,7 @@ const MobileSwipeTaskCard = ({ task, section, taskIndex, onMove }) => {
       progress: 0,
       target: null,
     };
+    readyCueRef.current = false;
 
     pressTimerRef.current = window.setTimeout(() => {
       const gesture = gestureRef.current;
@@ -117,7 +127,7 @@ const MobileSwipeTaskCard = ({ task, section, taskIndex, onMove }) => {
       suppressClickRef.current = true;
       target.setPointerCapture?.(pointerId);
       setSwipe({ progress: 0, status: 'held', target: null, ready: false, blocked: false });
-      window.navigator?.vibrate?.(12);
+      triggerTactileCue([14, 24, 18]);
     }, LONG_PRESS_MS);
   };
 
@@ -141,6 +151,15 @@ const MobileSwipeTaskCard = ({ task, section, taskIndex, onMove }) => {
     const available = hasTarget(direction);
     const progress = direction ? clamp(Math.abs(dx) / SWIPE_COMMIT_PX, 0, 1) : 0;
     const ready = Boolean(available && progress >= 1);
+
+    if (ready && !readyCueRef.current) {
+      readyCueRef.current = true;
+      triggerTactileCue([10, 18, 24]);
+    }
+
+    if (!ready) {
+      readyCueRef.current = false;
+    }
 
     gesture.progress = progress;
     gesture.target = direction;
@@ -181,6 +200,8 @@ const MobileSwipeTaskCard = ({ task, section, taskIndex, onMove }) => {
         y: event.clientY,
       };
 
+      triggerTactileCue(28);
+
       setSwipe({
         progress: 1,
         status: `commit-${direction}`,
@@ -195,8 +216,13 @@ const MobileSwipeTaskCard = ({ task, section, taskIndex, onMove }) => {
       }, 90);
     } else {
       setSwipe({ progress: 0, status: 'settling', target: null, ready: false, blocked: false });
+      if (direction && !hasTarget(direction)) {
+        triggerTactileCue([8, 20, 8]);
+      }
       window.setTimeout(resetSwipe, 150);
     }
+
+    readyCueRef.current = false;
 
     window.setTimeout(() => {
       suppressClickRef.current = false;
@@ -251,7 +277,7 @@ const MobileSwipeTaskCard = ({ task, section, taskIndex, onMove }) => {
       </div>
       <div className="mobile-swipe-affordance" aria-hidden="true">
         <span className={`mobile-swipe-target previous ${swipe.target === 'previous' ? 'active' : ''} ${!hasPrevious ? 'disabled' : ''}`}>
-          <ChevronLeft size={14} />
+          <ChevronLeft size={16} />
           <span>{section.previousColumnTitle || section.columnTitle}</span>
         </span>
         <span className="mobile-swipe-progress">
@@ -259,7 +285,7 @@ const MobileSwipeTaskCard = ({ task, section, taskIndex, onMove }) => {
         </span>
         <span className={`mobile-swipe-target next ${swipe.target === 'next' ? 'active' : ''} ${!hasNext ? 'disabled' : ''}`}>
           <span>{section.nextColumnTitle || section.columnTitle}</span>
-          <ChevronRight size={14} />
+          <ChevronRight size={16} />
         </span>
       </div>
     </div>
