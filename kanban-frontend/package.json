@@ -7,7 +7,7 @@
     "canvas-confetti": "^1.9.4",
     "lucide-react": "^0.263.1",
     "postcss": "^8.5.15",
-    "react": "^18.2.0",
+    "react": "^19.2.7",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
     "tailwindcss": "^3.4.17"
