@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HardDrive, Plus, RotateCcw, Settings, Sun, Moon } from 'lucide-react';
+import { HardDrive, Plus, RotateCcw, Settings, Sun, Moon, X } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { KanbanProvider, useKanbanContext } from './contexts/KanbanContext';
 import Board from './components/Board';
@@ -48,6 +48,8 @@ const themes = {
   },
 };
 
+const DEMO_BANNER_DISMISSED_KEY = 'bacban.demo.bannerDismissed';
+
 const useViewportMatch = (query) => {
   const getMatch = () => (
     typeof window !== 'undefined'
@@ -74,6 +76,10 @@ const KanbanBoardInner = () => {
   const kanban = useKanbanContext();
   const { stack } = useFocus();
   const [showSettings, setShowSettings] = useState(false);
+  const [isDemoBannerDismissed, setIsDemoBannerDismissed] = useState(() => (
+    typeof window !== 'undefined'
+      && window.localStorage.getItem(DEMO_BANNER_DISMISSED_KEY) === 'true'
+  ));
   const [undoNotification, setUndoNotification] = useState(null);
   const isMobileViewport = useViewportMatch('(max-width: 700px)');
   const queryParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
@@ -140,6 +146,13 @@ const KanbanBoardInner = () => {
   const handleResetDemoData = async () => {
     const ok = await resetDemoData?.();
     setUndoNotification(ok ? 'Demo reset' : 'Demo reset failed');
+  };
+
+  const handleDismissDemoBanner = () => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(DEMO_BANNER_DISMISSED_KEY, 'true');
+    }
+    setIsDemoBannerDismissed(true);
   };
 
   useEffect(() => {
@@ -223,7 +236,7 @@ const KanbanBoardInner = () => {
           pointerEvents: stack.length > 0 ? 'none' : 'auto',
         }}
       >
-        {isDemoMode && (
+        {isDemoMode && !isDemoBannerDismissed && (
           <div className="demo-mode-banner" role="status">
             <div className="demo-mode-copy">
               <HardDrive size={16} />
@@ -233,6 +246,15 @@ const KanbanBoardInner = () => {
             <button type="button" onClick={handleResetDemoData}>
               <RotateCcw size={14} />
               <span>Reset sample board</span>
+            </button>
+            <button
+              type="button"
+              className="demo-mode-dismiss"
+              onClick={handleDismissDemoBanner}
+              title="Dismiss demo storage notice"
+              aria-label="Dismiss demo storage notice"
+            >
+              <X size={14} />
             </button>
           </div>
         )}

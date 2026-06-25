@@ -4,6 +4,7 @@ import { useFocus } from '../contexts/FocusContext';
 import { useKanbanContext } from '../contexts/KanbanContext';
 import { useContextMenu } from '../contexts/ContextMenuContext';
 import InlineEdit from './InlineEdit';
+import { getTaskPriorityBadge } from '../utils/priorityBadges';
 
 const ProgressRing = ({ done, total, size = 22 }) => {
   const r = (size - 4) / 2;
@@ -143,6 +144,7 @@ const TaskCard = ({
   }
 
   const progress = getTaskProgress ? getTaskProgress(task) : null;
+  const priorityBadge = getTaskPriorityBadge(task);
   const hasDueDate = Boolean(String(task.dueDate || '').trim());
   const timelinePercent = hasDueDate
     ? getTimelineProgress(task.dateAdded || task.createdAt, task.dueDate)
@@ -294,6 +296,16 @@ const TaskCard = ({
 
             <div className="task-card-content-grid">
               <div className="task-card-body">
+                {priorityBadge && (
+                  <div className="task-priority-badges" aria-label="Priority badges">
+                    <span
+                      className={`task-priority-badge task-priority-badge-${priorityBadge.kind}`}
+                      title={priorityBadge.title}
+                    >
+                      <span className="task-priority-badge-label">{priorityBadge.text}</span>
+                    </span>
+                  </div>
+                )}
                 <div className="task-title-row">
                   {task.color && <span className="color-dot flex-shrink-0" style={{ background: task.color }} />}
                   <InlineEdit

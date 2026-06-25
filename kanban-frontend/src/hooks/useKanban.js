@@ -62,18 +62,15 @@ const parseTimestamp = (value) => {
 
 const createDefaultBoard = (title = 'New Board') => ({
   title,
-  tasks: { todo: [], inprogress: [], done: [] },
-  columnOrder: ['todo', 'inprogress', 'done'],
-  columnTitles: { todo: 'To Do', inprogress: 'In Progress', done: 'Done' },
+  tasks: { todo: [], inprogress: [], onhold: [], done: [] },
+  columnOrder: ['todo', 'inprogress', 'onhold', 'done'],
+  columnTitles: { todo: 'To Do', inprogress: 'In Progress', onhold: 'on hold', done: 'Completed' },
   collapsed: false,
 });
 
 const createDefaultBoards = () => ({
   work: createDefaultBoard('Work'),
-  life: {
-    ...createDefaultBoard('Life'),
-    columnTitles: { todo: 'Personal', inprogress: 'Doing', done: 'Completed' },
-  },
+  life: createDefaultBoard('Life'),
 });
 
 const DEFAULT_SUBTASK_COLUMNS = ['todo', 'doing', 'done'];
@@ -193,7 +190,7 @@ const getStoredData = ({
 }) => ({
   boards: boards || createDefaultBoards(),
   theme: theme || 'blue',
-  darkMode: Boolean(darkMode),
+  darkMode: darkMode !== false,
   boardOrder: boardOrder || Object.keys(boards || {}),
   projectColors: projectColors || DEFAULT_PROJECT_COLORS,
   settings: normalizeSettings(settings),
@@ -214,7 +211,7 @@ const prepareLoadedData = (data) => {
   const next = JSON.parse(JSON.stringify(data || {}));
   next.boards = next.boards || createDefaultBoards();
   next.theme = next.theme || 'blue';
-  next.darkMode = Boolean(next.darkMode);
+  next.darkMode = next.darkMode !== false;
   next.boardOrder = next.boardOrder || Object.keys(next.boards);
   next.projectColors = next.projectColors || DEFAULT_PROJECT_COLORS;
   next.settings = normalizeSettings(next.settings);
@@ -245,7 +242,7 @@ const loadDemoSeedData = async () => {
 const getDataSnapshot = (data) => JSON.stringify({
   boards: data.boards,
   theme: data.theme || 'blue',
-  darkMode: data.darkMode || false,
+  darkMode: data.darkMode !== false,
   boardOrder: data.boardOrder || Object.keys(data.boards || {}),
   projectColors: data.projectColors || DEFAULT_PROJECT_COLORS,
   settings: normalizeSettings(data.settings),
@@ -254,7 +251,7 @@ const getDataSnapshot = (data) => JSON.stringify({
 export default function useKanban() {
   const [boards, setBoards] = useState(createDefaultBoards);
 
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
   const [currentTheme, setCurrentTheme] = useState('blue');
   const [boardOrder, setBoardOrder] = useState(['work', 'life']);
   const [projectColors, setProjectColors] = useState(DEFAULT_PROJECT_COLORS);
@@ -369,7 +366,7 @@ export default function useKanban() {
         browserData = browserData || getStoredData({
           boards: createDefaultBoards(),
           theme: 'blue',
-          darkMode: false,
+          darkMode: true,
           boardOrder: ['work', 'life'],
           projectColors: DEFAULT_PROJECT_COLORS,
           settings: DEFAULT_SETTINGS,

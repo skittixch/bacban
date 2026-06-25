@@ -78,6 +78,9 @@ Tasks support optional **nested subtasks** (fractal kanban). The `subtasks` fiel
   "text": "Project Name",
   "createdAt": "5/18/2026",
   "priority": 1,
+  "prioritySource": "email",
+  "priorityTotal": 3,
+  "priorityLabel": "Client listed first",
   "color": "#f97316",
   "references": "<p>Notes and <b>formatted text</b></p><span class=\"ref-img-wrapper\"><img class=\"ref-inline-img\" src=\"data:image/png;base64,...\" /></span>",
   "subtasks": {
@@ -99,6 +102,8 @@ The `references` field is optional (backward-compatible). It stores sanitized HT
 `doneAt` may be an older numeric timestamp or a UTC ISO timestamp. New writes should use UTC ISO. A truthy valid `doneAt` marks recently completed cards for cleanup/opacity logic.
 
 `waitingOn` is optional. Use it only when Eric or an external party needs to act; recent non-done cards with `waitingOn`, waiting/hold/review column placement, or due-soon status receive the brighter attention glow.
+
+`priority` is optional. When an email explicitly states an ordered priority list, use `priority` as the 1-based rank, set `prioritySource` to `email`, set `priorityTotal` when the total list length is known, and use `priorityLabel` only when the sender provided a meaningful label. The frontend renders these as priority badges on cards and overlays. Do not infer an email priority list from tone alone.
 
 ## Gmail / Agent Intake
 

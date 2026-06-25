@@ -5,6 +5,7 @@ import { useKanbanContext } from '../contexts/KanbanContext';
 import SubtaskBoard from './SubtaskBoard';
 import ReferenceEditor from './ReferenceEditor';
 import InlineEdit from './InlineEdit';
+import { getTaskPriorityBadge } from '../utils/priorityBadges';
 
 const isWaitingColumn = (title) => /waiting|hold|block|review/i.test(title || '');
 
@@ -124,6 +125,7 @@ const TaskOverlay = ({
   }
 
   const progress = getTaskProgress ? getTaskProgress(task) : null;
+  const priorityBadge = getTaskPriorityBadge(task);
 
   const isSubtaskLevel = (entry.subtaskPath || []).length > 0;
   const overlayClassName = `task-overlay ${phase} ${
@@ -239,6 +241,14 @@ const TaskOverlay = ({
 
           {/* Meta row */}
           <div className="overlay-meta">
+            {priorityBadge && (
+              <span
+                className={`task-priority-badge task-priority-badge-${priorityBadge.kind}`}
+                title={priorityBadge.title}
+              >
+                <span className="task-priority-badge-label">{priorityBadge.text}</span>
+              </span>
+            )}
             <span className="overlay-date">{task.createdAt}</span>
 
             {progress && (

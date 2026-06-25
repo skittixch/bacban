@@ -3,6 +3,70 @@ import { Plus, X, GripVertical, Check, ChevronRight } from 'lucide-react';
 import { useKanbanContext } from '../contexts/KanbanContext';
 import InlineEdit from './InlineEdit';
 
+const URL_PATTERN = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi;
+const TRAILING_URL_PUNCTUATION = /[.,;:!?)]$/;
+
+const splitTrailingPunctuation = (url) => {
+  let cleanUrl = url;
+  let trailing = '';
+
+  while (cleanUrl && TRAILING_URL_PUNCTUATION.test(cleanUrl)) {
+    trailing = cleanUrl.slice(-1) + trailing;
+    cleanUrl = cleanUrl.slice(0, -1);
+  }
+
+  return { cleanUrl, trailing };
+};
+
+const renderSubtaskText = (text) => {
+  if (!text) return text;
+
+  const parts = [];
+  let lastIndex = 0;
+
+  text.replace(URL_PATTERN, (match, _url, offset) => {
+    if (offset > lastIndex) {
+      parts.push(text.slice(lastIndex, offset));
+    }
+
+    const { cleanUrl, trailing } = splitTrailingPunctuation(match);
+    const href = cleanUrl.startsWith('www.') ? `https://${cleanUrl}` : cleanUrl;
+
+    parts.push(
+      <a
+        key={`${cleanUrl}-${offset}`}
+        className="subtask-link"
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        draggable={false}
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          const opened = window.open(e.currentTarget.href, '_blank', 'noopener,noreferrer');
+          if (!opened) {
+            window.location.assign(e.currentTarget.href);
+          }
+        }}
+        onDoubleClick={(e) => e.stopPropagation()}
+      >
+        {cleanUrl}
+      </a>
+    );
+
+    if (trailing) parts.push(trailing);
+    lastIndex = offset + match.length;
+    return match;
+  });
+
+  if (lastIndex === 0) return text;
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts;
+};
+
 const SubtaskBoard = ({
   task, boardId, columnId, topLevelTaskId, subtaskPath,
   onSubtaskFocus, // callback for drill-in (overlay mode)
@@ -75,7 +139,7 @@ const SubtaskBoard = ({
 
   const handlePillClick = (e, sub, colId) => {
     if (!onSubtaskFocus) return;
-    if (e.target.closest('button') || e.target.closest('input')) return;
+    if (e.target.closest('button') || e.target.closest('input') || e.target.closest('a')) return;
     const rect = e.currentTarget.getBoundingClientRect();
     onSubtaskFocus(sub, colId, { top: rect.top, left: rect.left, width: rect.width, height: rect.height });
   };
@@ -127,6 +191,7 @@ const SubtaskBoard = ({
                         textClassName={`subtask-text ${isDone ? 'line-through' : ''}`}
                         className={`subtask-edit-input`}
                         placeholder="Rename subtask..."
+                        renderText={renderSubtaskText}
                         inputProps={{ onClick: (e) => e.stopPropagation() }}
                       />
                       {onSubtaskFocus && (

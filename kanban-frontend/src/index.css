@@ -708,6 +708,48 @@ textarea {
   gap: 0.5rem;
 }
 
+.task-priority-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.45rem;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.task-priority-badge {
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--border-default) 70%, transparent);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  display: inline-flex;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.2;
+  max-width: 100%;
+  min-height: 20px;
+  min-width: 0;
+  padding: 2px 7px;
+}
+
+.task-priority-badge-email {
+  background: color-mix(in srgb, var(--theme-primary) 14%, var(--surface-tertiary));
+  border-color: color-mix(in srgb, var(--theme-primary) 42%, var(--border-default));
+  color: var(--theme-primary);
+}
+
+.task-priority-badge-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overlay-meta .task-priority-badge {
+  flex: 0 1 auto;
+}
+
 .task-title-text {
   flex: 1 1 auto;
   word-break: break-word;
@@ -1103,6 +1145,16 @@ textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.subtask-link {
+  color: var(--theme-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.subtask-link:hover {
+  color: var(--theme-primary-hover);
 }
 
 .overlay-mode .subtask-text {
