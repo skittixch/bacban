@@ -32,6 +32,7 @@ Use these classifications in the ledger `result.classification` field:
 - `actionable-task`: create/update a card and do one bounded safe loop if possible.
 - `attention-needed`: Eric personally needs to read, decide, approve, or provide input.
 - `status-only`: record progress on an existing task; no new work is needed.
+- `already-handled-by-Eric`: a newer sent message or clear outgoing activity shows Eric has already handled the ask.
 - `informational-no-op`: useful context but no board or work change is justified.
 - `duplicate`: already handled by a prior event, card update, or ledger entry.
 - `approval-required`: useful action exists, but authority is missing.
@@ -48,6 +49,7 @@ Every event should stop in one of these states:
 - `blocked`: exact `I need...` list is known.
 - `approval-required`: explicit approval is needed before the next action.
 - `no-op`: fresh evidence says no action is needed.
+- `already-handled-by-Eric`: Eric has already responded or acted, so no nudge is sent.
 - `duplicate`: same event or task was already handled.
 - `failed`: infrastructure failed before reliable classification or write/readback.
 
@@ -61,6 +63,9 @@ For Gmail-origin events:
 - Prefer matching sender, subject, thread id, message id, history id, and existing BacBan references before creating a new card.
 - Use the Gmail connector or current Gmail context first when available.
 - Do not treat newsletters, routine statements, ads, generic edit alerts, or ambiguous transactional mail as actionable without confirming the underlying work signal.
+- Before nudging Eric about a coworker/client ask, read the same thread for newer Eric sent mail. If Eric has meaningfully responded after the ask, classify the event as `already-handled-by-Eric` or `status-only` and do not send WhatsApp or email.
+- If an Eric-owned ask has no meaningful Eric response, wait 20 minutes from the latest actionable inbound message before sending a private WhatsApp nudge, unless a separate urgent deadline is explicit.
+- Do not send Gmail replies, create Gmail drafts, or reply to third parties without Eric's explicit approval. A first live email test for a third-party reply flow must go only to Eric's approved private address or authenticated `me`; send to the intended person only after Eric approves that test and the exact recipient/thread.
 
 For OpenCLAW/WhatsApp-origin events:
 
@@ -83,6 +88,8 @@ Before any board write:
 8. Read back the touched card or cards.
 
 Set `updatedAt` on every agent-created or agent-changed card. Set `doneAt` only when moving to Done or Completed. Use `waitingOn` only when Eric or another party needs to act.
+
+When a Gmail or WhatsApp event explicitly states an ordered priority list, preserve it on each affected card with `priority` as the 1-based rank, `prioritySource` set to `email` or `whatsapp`, `priorityTotal` when known, and `priorityLabel` only for useful sender-provided wording. Do not infer priority-list badges from tone or urgency words without an explicit order.
 
 ## Ledger Rules
 

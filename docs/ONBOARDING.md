@@ -1,22 +1,37 @@
 # BacBan Onboarding
 
-This guide gets a new operator from a local board to optional WhatsApp and Gmail-triggered assistant control. Keep account names, tokens, OAuth client files, OpenCLAW config, local phone numbers, and live board data out of Git.
+This guide is for someone who wants to run BacBan on their own Windows machine and then, if useful, teach an assistant to update the board safely.
 
-## Choose a Mode
+Start small. The board is useful by itself. The Gmail, WhatsApp, and Codex pieces only make sense after you trust the local board and understand the write contract.
 
-- Board only: run BacBan locally and manage cards by hand.
-- Board plus WhatsApp: allow private status messages to the operator.
+Keep account names, tokens, OAuth client files, OpenCLAW config, local phone numbers, and live board data out of Git.
+
+## Before You Start
+
+BacBan currently assumes:
+
+- Windows.
+- PowerShell.
+- Docker Desktop.
+- Git.
+- Local-first board data stored outside Git.
+
+For agent automation, it also assumes a high-capacity Codex setup. The author's workflow is built around the high-usage OpenAI ChatGPT Pro tier with Codex, specifically the $200/month Pro plan. The app still runs without that, but the deeper automation loops are designed for a model and usage budget that can handle long context, project files, verification steps, and repeated readback.
+
+## Choose Your First Mode
+
+Pick one mode and get it working before moving to the next.
+
+- Board only: run BacBan locally and manage cards yourself.
+- Board plus private status: let the assistant send private status messages to you when a card changes or needs attention.
 - Gmail to board: let Gmail events create or update BacBan cards after readback verification.
-- Gmail plus WhatsApp: same as Gmail to board, with private status messages only when the board changed or the operator needs to act.
+- Gmail plus private status: combine Gmail intake with private status messages only when the board changed or you need to act.
 
 Do not enable outbound Gmail sends, third-party WhatsApp messages, publishing, payment actions, or destructive changes without explicit approval for that action class.
 
 ## 1. Run BacBan
 
-Prerequisites:
-
-- Docker Desktop
-- Git
+This step proves the local app works.
 
 ```powershell
 git clone <repo-url> bacban
@@ -29,7 +44,23 @@ Open `http://localhost:3000`.
 
 For a populated first-run board, follow `docs/DEMO.md`.
 
-## 2. Define the Agent Write Contract
+At this point you should spend a few minutes using the board manually. Rename a card, move it, add a reference, and make sure the local workflow feels understandable before adding automation.
+
+## 2. Make the Board Yours
+
+The sample shape reflects the author's defaults. Replace it with yours.
+
+Useful first edits:
+
+- Rename boards and columns to match your daily categories.
+- Delete sample cards that do not match your life.
+- Add a few real Work cards and a few real Life cards.
+- Use references for links, notes, screenshots, or evidence you want an assistant to preserve.
+- Use `waitingOn` only when a person or outside system must act.
+
+The goal is not to design the perfect board. The goal is to give the assistant a concrete place to put real work without guessing.
+
+## 3. Define the Agent Write Contract
 
 Any local assistant that writes to BacBan should follow this sequence:
 
@@ -41,11 +72,23 @@ Any local assistant that writes to BacBan should follow this sequence:
 6. POST the full state back to `/api/data`.
 7. Verify health again.
 8. Read back the touched card or cards.
-9. Send a private status only when a card changed, work completed, work blocked, or the operator needs to act.
+9. Send a private status only when a card changed, work completed, work blocked, or you need to act.
 
 The assistant should treat an incoming message as intake, not completion. It should do one bounded useful loop when possible, update durable state, then report complete, blocked, or no-op.
 
-## 3. Add WhatsApp Status Through OpenCLAW
+## 4. Test One Assistant Loop
+
+Before adding Gmail or WhatsApp, test a boring local loop:
+
+1. Ask the assistant to inspect one real project note or email excerpt you provide manually.
+2. Have it decide whether an existing card should be updated or a new card should be created.
+3. Require it to follow the write contract.
+4. Check the card yourself in the browser.
+5. Keep the result only if the card is accurate and readable.
+
+This is the trust-building step. If one card cannot be updated clearly, do not automate a whole inbox yet.
+
+## 5. Add Private Status Through OpenCLAW
 
 Prerequisites:
 
@@ -63,16 +106,16 @@ openclaw config validate
 openclaw status --json
 ```
 
-Keep the WhatsApp boundary narrow:
+Keep the private-status boundary narrow:
 
-- OK: private status to the operator after a BacBan change, completion, blocked state, or attention-needed event.
+- OK: private status to you after a BacBan change, completion, blocked state, or attention-needed event.
 - OK: "Alex is waiting on you to approve the draft. Project: demo release notes."
 - Not OK by default: messages to clients, vendors, teammates, or groups.
 - Not OK by default: messages that imply a task was completed when the assistant only logged intake.
 
 Store OpenCLAW config and channel credentials in local config only. Do not commit them.
 
-## 4. Add Gmail Events
+## 6. Add Gmail Events
 
 Gmail push notifications need an external listener. Native Codex hooks run inside a Codex session; they are not a Gmail webhook server by themselves.
 
@@ -95,7 +138,7 @@ Gmail Pub/Sub watch
   -> local HTTPS listener
   -> assistant run
   -> BacBan API write/readback
-  -> optional private WhatsApp status
+  -> optional private status
 ```
 
 OpenCLAW/gog command shape:
@@ -120,10 +163,10 @@ The Gmail handler prompt should require:
 - Move cards only when status really changed.
 - Set `updatedAt` on every agent change.
 - Set `doneAt` only when moving a card to Done or Completed.
-- Set `waitingOn` when the operator or another party must act.
-- Send a private WhatsApp status only when BacBan changed or the operator needs attention.
+- Set `waitingOn` when you or another party must act.
+- Send a private status only when BacBan changed or you need attention.
 
-## 5. Codex Execution Options
+## 7. Codex Execution Options
 
 For a simple listener, call `codex exec` from the repo root after the listener resolves the Gmail message context:
 
@@ -154,7 +197,7 @@ try {
 
 Use the Codex SDK instead when a service needs structured thread reuse, tool orchestration, or explicit sandbox control.
 
-## 6. Recovery Checks
+## 8. Recovery Checks
 
 If a message arrives but BacBan does not change:
 
@@ -165,4 +208,4 @@ If a message arrives but BacBan does not change:
 5. Check the assistant run output.
 6. Check whether the message was informational and correctly handled as no-op.
 
-If WhatsApp fails but BacBan changed, treat notification recovery separately. The board write remains the source of truth.
+If private status fails but BacBan changed, treat notification recovery separately. The board write remains the source of truth.

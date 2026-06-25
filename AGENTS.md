@@ -38,13 +38,15 @@
 
 - For Codex work that should be tracked, add or update BacBan cards instead of creating separate to-do files.
 - Default target is `Work` / `To Do` unless the user names another board or column. Exception: BacBan, Backban, Loom, Codex-agent workflow, trigger, automation, and internal workflow/system-setup tasks go to `Life`, not `Work`, unless Eric explicitly routes one elsewhere.
+- If a card is waiting on Eric's own action, approval, or decision, keep or move it to the appropriate `To Do` column rather than `On Hold`. Use `On Hold` for external waits or work that is not actionable by Eric right now.
+- When a card is waiting on Eric, spell out the concrete next steps Eric can complete next. Prefer nested subtasks or a short checklist with exact links, paths, approval wording, or decisions needed; avoid vague next actions like only "review" or "decide."
 - Prefer the backend API over direct data edits:
   - `GET http://127.0.0.1:3001/api/data`
   - `POST http://127.0.0.1:3001/api/data` with the full updated board state
 - Before posting board changes, create a timestamped backup of `kanban-data\kanban-data.json`.
 - Validate JSON and confirm `http://127.0.0.1:3001/health` after writes.
 - Cards created by Codex should be concise and useful: title, source project/path, current status, next action, and evidence links or notes in `references` when needed.
-- For agent-created or agent-changed cards, set `updatedAt` as a UTC ISO timestamp. Set `doneAt` as a UTC ISO timestamp when moving a card to done/completed. Use `waitingOn` only when Eric or another party needs to act; recent cards with `waitingOn` get brighter attention highlighting in the UI.
+- For agent-created or agent-changed cards, set `updatedAt` as a UTC ISO timestamp. Set `doneAt` as a UTC ISO timestamp when moving a card to done/completed. Use `waitingOn` only when Eric or another party needs to act; recent cards with `waitingOn` get brighter attention highlighting in the UI. A `waitingOn` value for Eric does not by itself mean the card belongs in `On Hold`.
 
 ## Harness direction
 
