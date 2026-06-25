@@ -139,6 +139,6 @@ Recommended GitHub settings:
 - Set the repository description to: `Local-first kanban for human task tracking and bounded AI-agent writeback.`
 - Add topics: `kanban`, `local-first`, `codex`, `ai-agents`, `workflow-automation`, `docker`, `react`.
 - Keep visibility private until public sanitization is complete.
-- Enable GitHub Pages from Actions if the Pages workflow does not activate automatically.
+- Keep the Pages workflow manual until the repo visibility/plan supports GitHub Pages. On the current private repo, GitHub reports that Pages requires either making the repo public or upgrading the account.
 - Add branch protection on `main` after CI is green.
 - Enable Dependabot security updates and secret scanning where available.

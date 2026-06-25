@@ -1,7 +1,6 @@
 # BacBan
 
 [![CI](https://github.com/skittixch/bacban/actions/workflows/ci.yml/badge.svg)](https://github.com/skittixch/bacban/actions/workflows/ci.yml)
-[![Pages](https://github.com/skittixch/bacban/actions/workflows/pages.yml/badge.svg)](https://github.com/skittixch/bacban/actions/workflows/pages.yml)
 [![Security Policy](https://img.shields.io/badge/security-policy-blue.svg)](SECURITY.md)
 [![Private-first](https://img.shields.io/badge/data-local--first-0f766e.svg)](#private-state)
 
@@ -76,13 +75,13 @@ Card creation is intake, not completion. A good loop does one bounded useful act
 |-- demo/                   Safe demo board seed
 |-- docs/                   Demo page and operator docs
 |-- codex/                  Agent runbooks and local-loop notes
-|-- .github/                CI, Pages, templates, Dependabot
+|-- .github/                CI, manual Pages workflow, templates, Dependabot
 `-- docker-compose.yml      Local production stack
 ```
 
 ## Documentation
 
-- `docs/index.html`: GitHub Pages-ready demo page.
+- `docs/index.html`: dark, static demo/overview page. It can be deployed with GitHub Pages when the repo visibility/plan supports Pages.
 - `docs/DEMO.md`: seed and reset a safe sample board.
 - `docs/ONBOARDING.md`: board-only, WhatsApp, and Gmail-to-board setup path.
 - `docs/CODEX_GMAIL_SETUP.md`: deeper event architecture notes.

@@ -29,7 +29,7 @@ developer tool while keeping local board data private.
 - Added `docs/API.md` for the local HTTP contract.
 - Added `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `SUPPORT.md`,
   and `CHANGELOG.md`.
-- Added issue forms, a PR template, CI, Pages, Dependabot, and an OpenSSF
+- Added issue forms, a PR template, CI, a manual Pages workflow, Dependabot, and an OpenSSF
   Scorecard workflow that only runs on public repositories.
 - Kept the license private-preview/all-rights-reserved until an explicit OSS
   license is chosen.
