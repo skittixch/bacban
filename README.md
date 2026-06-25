@@ -146,21 +146,36 @@ The board document is stored as one JSON object. Important fields:
       "tasks": {
         "todo": [],
         "inprogress": [],
+        "onhold": [],
         "done": []
       },
-      "columnOrder": ["todo", "inprogress", "done"],
+      "columnOrder": ["todo", "inprogress", "onhold", "done"],
       "columnTitles": {
         "todo": "To Do",
         "inprogress": "In Progress",
-        "done": "Done"
+        "onhold": "on hold",
+        "done": "Completed"
       }
     }
   },
-  "boardOrder": ["work"],
+  "boardOrder": ["work", "life"],
   "theme": "blue",
   "darkMode": true,
-  "projectColors": {},
-  "settings": {}
+  "projectColors": {
+    "#ef4444": "Urgent",
+    "#f97316": "Operations",
+    "#f59e0b": "Setup",
+    "#22c55e": "Release",
+    "#3b82f6": "Client Work",
+    "#8b5cf6": "Automation",
+    "#ec4899": "Personal"
+  },
+  "settings": {
+    "completedTaskRetentionDays": 7,
+    "completedTaskFade": true,
+    "completionCelebration": true,
+    "cardDensity": "comfortable"
+  }
 }
 ```
 

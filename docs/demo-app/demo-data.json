@@ -11,6 +11,10 @@
             "updatedAt": "2026-06-24T15:00:00Z",
             "color": "#3b82f6",
             "dueDate": "2026-06-27",
+            "priority": 1,
+            "prioritySource": "email",
+            "priorityTotal": 3,
+            "priorityLabel": "Client listed first",
             "references": "<p><strong>Demo intake</strong><br>Client asked for a status update, next deliverable date, and links to the latest draft.</p><ul><li>Match the email to an existing card before creating a duplicate.</li><li>Write a dated update with evidence and next action.</li><li>Send a private WhatsApp status only if the user needs to act.</li></ul>",
             "subtasks": {
               "columns": ["todo", "doing", "done"],
@@ -62,6 +66,17 @@
             "references": "<p><strong>Loop contract</strong><br>Ingest the event, choose the next useful action, verify it, update durable state, and stop with a clear status.</p>"
           }
         ],
+        "onhold": [
+          {
+            "id": "demo_work_waiting_review",
+            "text": "Demo: wait for review notes before sending",
+            "createdAt": "6/25/2026",
+            "updatedAt": "2026-06-25T12:20:00Z",
+            "color": "#f97316",
+            "waitingOn": "Reviewer notes",
+            "references": "<p>On-hold cards keep blocked or waiting work visible without mixing it into active work.</p>"
+          }
+        ],
         "done": [
           {
             "id": "demo_work_setup_done",
@@ -73,11 +88,12 @@
           }
         ]
       },
-      "columnOrder": ["todo", "inprogress", "done"],
+      "columnOrder": ["todo", "inprogress", "onhold", "done"],
       "columnTitles": {
         "todo": "To Do",
         "inprogress": "In Progress",
-        "done": "Done"
+        "onhold": "on hold",
+        "done": "Completed"
       },
       "collapsed": false,
       "height": 430
@@ -107,6 +123,17 @@
             "references": "<p>Waiting-on cards make it obvious when the next move depends on a person, system, or reply.</p>"
           }
         ],
+        "onhold": [
+          {
+            "id": "demo_life_hold_receipt",
+            "text": "Demo: hold reimbursement until receipt arrives",
+            "createdAt": "6/25/2026",
+            "updatedAt": "2026-06-25T12:20:00Z",
+            "color": "#f59e0b",
+            "waitingOn": "Receipt upload",
+            "references": "<p>A fourth column separates waiting personal/admin items from active tasks.</p>"
+          }
+        ],
         "done": [
           {
             "id": "demo_life_ready",
@@ -118,10 +145,11 @@
           }
         ]
       },
-      "columnOrder": ["todo", "inprogress", "done"],
+      "columnOrder": ["todo", "inprogress", "onhold", "done"],
       "columnTitles": {
-        "todo": "Personal",
-        "inprogress": "Doing",
+        "todo": "To Do",
+        "inprogress": "In Progress",
+        "onhold": "on hold",
         "done": "Completed"
       },
       "collapsed": false,
@@ -129,7 +157,7 @@
     }
   },
   "theme": "blue",
-  "darkMode": false,
+  "darkMode": true,
   "boardOrder": ["work", "life"],
   "projectColors": {
     "#ef4444": "Urgent",

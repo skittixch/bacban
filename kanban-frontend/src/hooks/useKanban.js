@@ -25,7 +25,7 @@ const DEFAULT_STORAGE_CONFIG = {
 };
 
 const DEFAULT_SETTINGS = {
-  completedTaskRetentionDays: 3,
+  completedTaskRetentionDays: 7,
   completedTaskFade: true,
   completionCelebration: true,
   cardDensity: 'comfortable',
@@ -123,13 +123,13 @@ const updateTaskInState = (boards, boardId, columnId, taskId, subtaskPath, updat
 };
 
 const DEFAULT_PROJECT_COLORS = {
-  '#ef4444': 'Project Red',
-  '#f97316': 'Project Orange',
-  '#f59e0b': 'Project Yellow',
-  '#22c55e': 'Project Green',
-  '#3b82f6': 'Project Blue',
-  '#8b5cf6': 'Project Purple',
-  '#ec4899': 'Project Pink',
+  '#ef4444': 'Urgent',
+  '#f97316': 'Operations',
+  '#f59e0b': 'Setup',
+  '#22c55e': 'Release',
+  '#3b82f6': 'Client Work',
+  '#8b5cf6': 'Automation',
+  '#ec4899': 'Personal',
 };
 
 const normalizeRetentionDays = (value) => {
