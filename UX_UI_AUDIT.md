@@ -1,4 +1,4 @@
-# UX/UI AUDIT — BacBan Kanban Board
+# UX/UI AUDIT — BacBan
 
 **Auditor:** Staff Product Designer / Lead Frontend Architect  
 **Date:** 2026-05-23  

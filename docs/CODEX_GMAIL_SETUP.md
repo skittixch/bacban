@@ -67,7 +67,7 @@ Expected local pieces:
 - `gog` authenticated to the Gmail account.
 - OpenCLAW webhook listener reachable by Pub/Sub push.
 - OpenCLAW hook mapping with a stable id such as `gmail-bacban-triage`.
-- Codex running in `X:\_bacsapps\bacban`.
+- Codex running in the BacBan repo root.
 
 Useful verification commands:
 
@@ -110,13 +110,13 @@ Prefer updating an existing relevant card over creating a duplicate. Create a ne
 This is the simplest replacement shape for the OpenCLAW mapping. The listener still receives Pub/Sub and resolves the Gmail message context; Codex handles triage and board edits.
 
 ```powershell
-Push-Location X:\_bacsapps\bacban
+Push-Location <repo-root>
 
 $payload = Get-Content .\event.json -Raw
 $prompt = @"
 You are handling one Gmail-triggered BacBan triage event.
 
-Repo: X:\_bacsapps\bacban
+Repo: <repo-root>
 Rules: read AGENTS.md and codex/GMAIL_BACBAN_RUNBOOK.md first.
 Event JSON:
 $payload
@@ -163,3 +163,5 @@ If WhatsApp fails, treat that separately from BacBan. A notification failure doe
 - Codex hooks: https://developers.openai.com/codex/hooks
 - Codex SDK: https://developers.openai.com/codex/sdk
 - Codex CLI: https://developers.openai.com/codex/cli
+
+For a broader first-run path that includes BacBan, WhatsApp status, Gmail events, and the assistant write contract, see `docs/ONBOARDING.md`.

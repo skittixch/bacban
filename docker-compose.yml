@@ -6,7 +6,7 @@ services:
     ports:
       - "3001:3001"
     volumes:
-      - ./kanban-data:/data  # Bind mount for persistent storage
+      - ./kanban-data:/data # Bind mount for persistent storage
     environment:
       - PORT=3001
       - DATA_FILE=/data/kanban-data.json
@@ -26,7 +26,7 @@ services:
     networks:
       - npm_network
 
-  # Development server — only starts with: docker compose --profile dev up kanban-dev
+  # Development server - only starts with: docker compose --profile dev up kanban-dev
   kanban-dev:
     image: node:18-alpine
     container_name: kanban-dev

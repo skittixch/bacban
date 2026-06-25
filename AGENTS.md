@@ -37,7 +37,7 @@
 ## Task intake contract
 
 - For Codex work that should be tracked, add or update BacBan cards instead of creating separate to-do files.
-- Default target is `Work` / `To Do` unless the user names another board or column.
+- Default target is `Work` / `To Do` unless the user names another board or column. Exception: BacBan, Backban, Loom, Codex-agent workflow, trigger, automation, and internal workflow/system-setup tasks go to `Life`, not `Work`, unless Eric explicitly routes one elsewhere.
 - Prefer the backend API over direct data edits:
   - `GET http://127.0.0.1:3001/api/data`
   - `POST http://127.0.0.1:3001/api/data` with the full updated board state

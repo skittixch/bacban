@@ -15,6 +15,7 @@ const REMOTE_REFRESH_INTERVAL_MS = 5000;
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 const nowIso = () => new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+const isCompletionColumnTitle = (title = '') => /done|complete/i.test(title);
 
 const parseTimestamp = (value) => {
   if (!value) return null;
@@ -839,7 +840,7 @@ export default function useKanban() {
       
       const movedTask = { ...draggedTask, updatedAt: nowIso() };
       const targetColumnTitle = (newBoards[targetBoardId]?.columnTitles?.[targetColumnId] || '').toLowerCase();
-      const isDoneColumn = targetColumnTitle.includes('done') || targetColumnTitle.includes('complete');
+      const isDoneColumn = isCompletionColumnTitle(targetColumnTitle);
 
       if (isDoneColumn) {
         if (!movedTask.doneAt) {
@@ -871,6 +872,53 @@ export default function useKanban() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draggedTask, draggedFrom, dragOverTaskIndex, dragOverTarget]);
 
+  const moveTaskToAdjacentColumn = useCallback((boardId, columnId, taskId, direction, point = {}) => {
+    const step = direction === 'next' || direction === 1 ? 1 : direction === 'previous' || direction === -1 ? -1 : 0;
+    if (!step) return;
+
+    setBoards(prev => {
+      const board = prev[boardId];
+      if (!board) return prev;
+
+      const fromColumnIndex = board.columnOrder.indexOf(columnId);
+      const targetColumnId = board.columnOrder[fromColumnIndex + step];
+      if (fromColumnIndex === -1 || !targetColumnId) return prev;
+
+      const sourceTasks = board.tasks[columnId] || [];
+      const taskIndex = sourceTasks.findIndex(task => task.id === taskId);
+      if (taskIndex === -1) return prev;
+
+      const targetTasks = board.tasks[targetColumnId] || [];
+      const movedTask = { ...sourceTasks[taskIndex], updatedAt: nowIso() };
+      const targetColumnTitle = board.columnTitles?.[targetColumnId] || '';
+
+      if (isCompletionColumnTitle(targetColumnTitle)) {
+        if (!movedTask.doneAt) {
+          movedTask.doneAt = nowIso();
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('taskDroppedToDone', {
+              detail: { x: point.x || window.innerWidth / 2, y: point.y || window.innerHeight / 2 },
+            }));
+          }, 50);
+        }
+      } else {
+        delete movedTask.doneAt;
+      }
+
+      return {
+        ...prev,
+        [boardId]: {
+          ...board,
+          tasks: {
+            ...board.tasks,
+            [columnId]: sourceTasks.filter(task => task.id !== taskId),
+            [targetColumnId]: [...targetTasks, movedTask],
+          },
+        },
+      };
+    });
+  }, []);
+
   const handleDragEnd = useCallback(() => {
     setDraggedTask(null);
     setDraggedFrom(null);
@@ -897,6 +945,7 @@ export default function useKanban() {
     boards, boardOrder, isDarkMode, currentTheme, isLoading, saveStatus, projectColors,
     setIsDarkMode, setCurrentTheme, updateProjectColorName,
     addTask, deleteTask, duplicateTask, updateTask, updateTaskPriority, updateTaskColor, updateTaskReferences, updateTaskWaitingOn, updateTaskDueDate,
+    moveTaskToAdjacentColumn,
     undoDelete, deletedTask, undoDeleteSubtask, deletedSubtask,
     updateColumnTitle, updateBoardTitle, toggleBoardCollapsed,
     addBoard, deleteBoard, addColumn, deleteColumn,

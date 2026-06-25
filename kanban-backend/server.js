@@ -108,7 +108,7 @@ app.get("/health", (req, res) => {
 // Initialize and start server
 ensureDataFile().then(() => {
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Kanban API running on port ${PORT}`);
+    console.log(`BacBan API running on port ${PORT}`);
     console.log(`Data file: ${DATA_FILE}`);
   });
 });

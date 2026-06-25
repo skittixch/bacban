@@ -12,10 +12,16 @@ Incoming Gmail is not handled by native Codex hooks. The current event path is:
 2. `gog` / OpenCLAW webhook listener receives the push event.
 3. OpenCLAW maps the event to hook id `gmail-bacban-triage` with stable session key `hook:gmail-bacban-triage`.
 4. The mapped prompt runs Codex against the live BacBan stack at `X:\_bacsapps\bacban`.
-5. Codex reads Gmail context as needed, keeps Gmail read-only unless Eric explicitly approves Gmail mutations, and updates BacBan through the live API when justified.
+5. Codex reads Gmail context as needed, keeps Gmail read-only unless Eric explicitly approves Gmail mutations, updates BacBan through the live API when justified, and starts a bounded project-local work loop when the email is implementation-ready.
 6. If BacBan changed or Eric needs a decision, the workflow may send a concise private WhatsApp summary to Eric through OpenCLAW.
 
+Cutover status as of 2026-06-24: Gmail Pub/Sub is the primary intake path. `gog gmail watch status` confirmed the `INBOX` watch for Eric's Gmail account on topic `projects/gmail-automation-394816/topics/gog-gmail-watch`, with delivery status `ok` at 2026-06-24 16:00:25 -05:00 before restart. After the OpenCLAW gateway restart, the watch refreshed at 2026-06-24 16:30:06 -05:00 and expires 2026-07-01 16:30:06 -05:00. Keep the scheduled Codex sweep as a safety net, not the main trigger.
+
 Important distinction: OpenCLAW is the inbound/event and WhatsApp gateway. BacBan API readback is the source of truth for whether board work succeeded.
+
+Before changing event classification, same-method status behavior, dedupe, or ledger handling, read `codex\event-intake\event-rules.md`. Inbound Gmail/OpenCLAW events should be appended to the private ledger with `codex\event-intake\Write-AgentLedgerEvent.ps1`; the default runtime log is `codex\agent-ledger\events.jsonl` and must stay out of Git.
+
+Live hook wiring as of 2026-06-24: the OpenCLAW mapping `gmail-bacban-triage` includes a ledger-first requirement in its `messageTemplate`, so every rendered Gmail event should run `Write-AgentLedgerEvent.ps1` before triage, BacBan writes, notifications, or project work.
 
 ## Native Codex Hooks Finding
 
@@ -37,9 +43,22 @@ The simplest future native-ish shape would be:
 
 Future Gmail-triggered runs are allowed to create, update, move, complete, reopen, and annotate BacBan cards when the email is actionable.
 
+Gmail remains read-only during intake. The standing exception is a concise completion-or-blocked status update to Eric only, when the task is actually complete or genuinely blocked and email is the relevant contact method. Send those status updates only to Eric's approved private email address; do not email third parties or reply to client/boss-facing threads.
+
+Card creation or movement is intake, not completion. For actionable implementation-ready work that can safely be done on this machine, the run should continue after the BacBan update:
+
+1. Re-anchor in the relevant project files, existing BacBan card, runbook, manifest, or handoff.
+2. Move or keep the card `In Progress`.
+3. Do one bounded safe work loop: inspect the real source of truth, make the smallest useful reversible change or produce the needed artifact, and run proportionate verification.
+4. Update BacBan with the work done, evidence path or command/readback result, verification, status, and next action.
+5. Continue only while progress is clear and safe; otherwise stop as complete, clean no-op, blocked, approval-required, or waiting.
+
+Fail closed before boss/client-facing delivery, messages to third parties, publishing, payments, credentials, destructive actions, production deploys, or unclear authority. If blocked, put the exact `I need...` list and easiest next step in the private report and on the card when useful.
+
 Default routing:
 
 - Personal/home/school/Edie/Jessica/admin items: `Life`
+- BacBan, Backban, Loom, Codex-agent workflow, trigger, automation, and internal workflow/system-setup items: `Life`, not `Work`, unless Eric explicitly routes one elsewhere
 - Lyndon, Rachel, Tiki Taco, RW2 Productions, Field Trip Films items: `Work`
 - New unscheduled work: `To Do`
 - Active work: `In Progress`
@@ -110,6 +129,15 @@ This approval does not authorize:
 - unrelated outbound notifications
 
 If WhatsApp delivery fails, do not mark the BacBan write as failed until board write/readback has been checked separately.
+
+## Eric-Only Completion / Blocked Replies
+
+Eric has approved same-method status replies when an incoming email or WhatsApp task has been completed or marked blocked. Use the method that contacted the system when available:
+
+- Email-origin tasks: send or reply only to Eric's approved private email address.
+- WhatsApp-origin tasks: reply only to the configured private WhatsApp target.
+
+The status message should be short and say whether the task completed or is blocked, what changed, what was verified, and the smallest next action if blocked. This approval does not authorize messages to anyone except Eric, client-visible delivery, publishing, payment, credential, destructive, or production actions.
 
 ## Git and Private State
 

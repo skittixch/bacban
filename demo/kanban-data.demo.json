@@ -1,0 +1,143 @@
+{
+  "boards": {
+    "work": {
+      "title": "Work",
+      "tasks": {
+        "todo": [
+          {
+            "id": "demo_work_triage_email",
+            "text": "Demo: triage an incoming client email",
+            "createdAt": "6/24/2026",
+            "updatedAt": "2026-06-24T15:00:00Z",
+            "color": "#3b82f6",
+            "dueDate": "2026-06-27",
+            "references": "<p><strong>Demo intake</strong><br>Client asked for a status update, next deliverable date, and links to the latest draft.</p><ul><li>Match the email to an existing card before creating a duplicate.</li><li>Write a dated update with evidence and next action.</li><li>Send a private WhatsApp status only if the user needs to act.</li></ul>",
+            "subtasks": {
+              "columns": ["todo", "doing", "done"],
+              "columnTitles": {
+                "todo": "To Do",
+                "doing": "Doing",
+                "done": "Done"
+              },
+              "items": {
+                "todo": [
+                  {
+                    "id": "demo_sub_read_thread",
+                    "text": "Read the latest thread context",
+                    "createdAt": "6/24/2026"
+                  },
+                  {
+                    "id": "demo_sub_update_board",
+                    "text": "Update or create the BacBan card",
+                    "createdAt": "6/24/2026"
+                  }
+                ],
+                "doing": [
+                  {
+                    "id": "demo_sub_prepare_status",
+                    "text": "Prepare concise status wording",
+                    "createdAt": "6/24/2026"
+                  }
+                ],
+                "done": []
+              }
+            }
+          },
+          {
+            "id": "demo_work_release_notes",
+            "text": "Demo: prepare release notes for a small product update",
+            "createdAt": "6/24/2026",
+            "updatedAt": "2026-06-24T15:15:00Z",
+            "color": "#22c55e",
+            "references": "<p>Collect merged changes, group them by user impact, and keep deployment approval separate from drafting.</p>"
+          }
+        ],
+        "inprogress": [
+          {
+            "id": "demo_work_agent_loop",
+            "text": "Demo: run one bounded assistant loop",
+            "createdAt": "6/24/2026",
+            "updatedAt": "2026-06-24T15:30:00Z",
+            "color": "#8b5cf6",
+            "references": "<p><strong>Loop contract</strong><br>Ingest the event, choose the next useful action, verify it, update durable state, and stop with a clear status.</p>"
+          }
+        ],
+        "done": [
+          {
+            "id": "demo_work_setup_done",
+            "text": "Demo: connect local board API health check",
+            "createdAt": "6/24/2026",
+            "updatedAt": "2026-06-24T15:45:00Z",
+            "color": "#f59e0b",
+            "references": "<p>Verified <code>GET /health</code> before allowing agent writes.</p>"
+          }
+        ]
+      },
+      "columnOrder": ["todo", "inprogress", "done"],
+      "columnTitles": {
+        "todo": "To Do",
+        "inprogress": "In Progress",
+        "done": "Done"
+      },
+      "collapsed": false,
+      "height": 430
+    },
+    "life": {
+      "title": "Life",
+      "tasks": {
+        "todo": [
+          {
+            "id": "demo_life_grocery_pickup",
+            "text": "Demo: schedule grocery pickup",
+            "createdAt": "6/24/2026",
+            "updatedAt": "2026-06-24T16:00:00Z",
+            "color": "#ec4899",
+            "dueDate": "2026-06-26",
+            "references": "<p>Example personal task showing due-date highlighting and simple reference notes.</p>"
+          }
+        ],
+        "inprogress": [
+          {
+            "id": "demo_life_waiting_domain",
+            "text": "Demo: renew domain after registrar confirmation",
+            "createdAt": "6/24/2026",
+            "updatedAt": "2026-06-24T16:10:00Z",
+            "color": "#f97316",
+            "waitingOn": "Registrar email confirmation",
+            "references": "<p>Waiting-on cards make it obvious when the next move depends on a person, system, or reply.</p>"
+          }
+        ],
+        "done": [
+          {
+            "id": "demo_life_ready",
+            "text": "Demo: write onboarding checklist",
+            "createdAt": "6/24/2026",
+            "updatedAt": "2026-06-24T16:20:00Z",
+            "color": "#3b82f6",
+            "references": "<p>Completed example kept visible for a first-run tour.</p>"
+          }
+        ]
+      },
+      "columnOrder": ["todo", "inprogress", "done"],
+      "columnTitles": {
+        "todo": "Personal",
+        "inprogress": "Doing",
+        "done": "Completed"
+      },
+      "collapsed": false,
+      "height": 400
+    }
+  },
+  "theme": "blue",
+  "darkMode": false,
+  "boardOrder": ["work", "life"],
+  "projectColors": {
+    "#ef4444": "Urgent",
+    "#f97316": "Operations",
+    "#f59e0b": "Setup",
+    "#22c55e": "Release",
+    "#3b82f6": "Client Work",
+    "#8b5cf6": "Automation",
+    "#ec4899": "Personal"
+  }
+}

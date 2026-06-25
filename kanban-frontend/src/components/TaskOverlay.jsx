@@ -126,6 +126,9 @@ const TaskOverlay = ({
   const progress = getTaskProgress ? getTaskProgress(task) : null;
 
   const isSubtaskLevel = (entry.subtaskPath || []).length > 0;
+  const overlayClassName = `task-overlay ${phase} ${
+    isSubtaskLevel ? 'task-overlay--nested' : 'task-overlay--root'
+  }`;
 
   const board = boards[boardId];
   const columnTitle = board?.columnTitles?.[columnId];
@@ -173,7 +176,7 @@ const TaskOverlay = ({
         aria-modal="true"
         aria-labelledby="task-overlay-title"
         tabIndex={-1}
-        className={`task-overlay ${phase}`}
+        className={overlayClassName}
         style={{
           zIndex: 1001 + depth * 10,
           opacity: layerOpacity,

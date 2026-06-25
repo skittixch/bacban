@@ -10,7 +10,6 @@ const SubtaskBoard = ({
 }) => {
   const kanban = useKanbanContext();
   const {
-    isDarkMode,
     addSubtask: onAddSubtask,
     deleteSubtask: onDeleteSubtask,
     updateSubtask: onUpdateSubtask,
@@ -82,7 +81,11 @@ const SubtaskBoard = ({
   };
 
   return (
-    <div className={`subtask-board ${isOverlay ? 'overlay-mode' : ''}`} onClick={(e) => e.stopPropagation()}>
+    <div
+      className={`subtask-board ${isOverlay ? 'overlay-mode' : ''}`}
+      style={{ '--subtask-column-count': columns.length }}
+      onClick={(e) => e.stopPropagation()}
+    >
       <div className="subtask-columns">
         {columns.map((colId) => {
           const colItems = items[colId] || [];

@@ -83,7 +83,7 @@ const KanbanBoardInner = () => {
 
   const {
     boards, boardOrder, isDarkMode, currentTheme, isLoading, saveStatus, projectColors,
-    setIsDarkMode, setCurrentTheme, updateProjectColorName,
+    setIsDarkMode, updateProjectColorName,
     deletedTask, undoDelete, deletedSubtask, undoDeleteSubtask,
   } = kanban;
 
@@ -222,7 +222,7 @@ const KanbanBoardInner = () => {
         <div className={`app-header sticky top-0 z-50 border-b bg-[var(--surface-primary)] border-[var(--border-default)]`}>
           <div className="max-w-full mx-auto px-5 py-2.5 flex justify-between items-center">
             <div className="flex items-center space-x-3">
-              <h1 className="text-lg font-bold tracking-tight">Kanban</h1>
+              <h1 className="text-lg font-bold tracking-tight">BacBan</h1>
               <span className={`save-dot ${saveStatus}`} title={
                 saveStatus === 'saved' ? 'All changes saved' :
                 saveStatus === 'saving' ? 'Saving...' : 'Error saving'

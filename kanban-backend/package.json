@@ -1,7 +1,7 @@
 {
   "name": "kanban-backend",
   "version": "1.0.0",
-  "description": "Kanban board backend API",
+  "description": "BacBan backend API",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

@@ -9,7 +9,7 @@ const Board = ({ boardId, board }) => {
   const kanban = useKanbanContext();
   const { showContextMenu } = useContextMenu();
   const {
-    isDarkMode, boardOrder, dragState,
+    boardOrder, dragState,
     handleBoardDragStart: onBoardDragStart,
     handleBoardDragOver: onBoardDragOver,
     handleBoardDragEnd: onBoardDragEnd,
@@ -65,7 +65,7 @@ const Board = ({ boardId, board }) => {
 
   return (
     <div
-      className="board-section mb-5 fade-in"
+      className="board-section mb-3 fade-in"
       draggable
       onDragStart={(e) => onBoardDragStart(e, boardId)}
       onDragOver={(e) => onBoardDragOver(e, boardId)}
@@ -78,7 +78,7 @@ const Board = ({ boardId, board }) => {
         style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
       >
         {/* Board Header */}
-        <div className={`px-5 py-3.5 border-b border-[var(--border-default)] cursor-move`}>
+        <div className={`px-3 py-2 border-b border-[var(--border-default)] cursor-move`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <InlineEdit
@@ -122,6 +122,14 @@ const Board = ({ boardId, board }) => {
                 )
               )}
               <button
+                onClick={() => onAddColumn(boardId)}
+                className="add-column-btn p-1.5 rounded-lg transition-all text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-tertiary)]"
+                title="Add column"
+                aria-label="Add column to board"
+              >
+                <Plus size={16} />
+              </button>
+              <button
                 onClick={() => onToggleCollapsed(boardId)}
                 className={`p-1.5 rounded-lg transition-all text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-tertiary)]`}
                 title={board.collapsed ? 'Expand' : 'Collapse'}
@@ -138,8 +146,8 @@ const Board = ({ boardId, board }) => {
           board.collapsed ? 'max-h-0 opacity-0' : 'max-h-[4000px] opacity-100'
         }`}>
           {!board.collapsed && (
-            <div className="p-4">
-              <div className="flex gap-4 overflow-x-auto">
+            <div className="p-2">
+              <div className="flex gap-2 overflow-x-auto">
                 {columns.map((column, index) => (
                   <div
                     key={column.id}
@@ -148,7 +156,7 @@ const Board = ({ boardId, board }) => {
                     onDragOver={(e) => onColumnDragOver(e, index, boardId)}
                     onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
                     onDragEnd={onColumnDragEnd}
-                    className={`board-column p-3.5 flex-1 min-w-[220px] flex flex-col group/col
+                    className={`board-column p-2 flex-1 min-w-[220px] flex flex-col group/col
                       ${draggedColumn === column.id && draggedColumnBoard === boardId ? 'opacity-40 rotate-1 scale-95' : ''}
                     `}
                   >
@@ -279,15 +287,6 @@ const Board = ({ boardId, board }) => {
                   </div>
                 ))}
 
-                {/* Add column button */}
-                <button
-                  onClick={() => onAddColumn(boardId)}
-                  className={`add-column-btn min-w-[50px] rounded-lg border-2 border-dashed flex items-center justify-center border-[var(--border-default)] text-[var(--text-disabled)] hover:border-[var(--border-strong)] hover:text-[var(--text-muted)]`}
-                  title="Add column"
-                  aria-label="Add column to board"
-                >
-                  <Plus size={22} />
-                </button>
               </div>
             </div>
           )}

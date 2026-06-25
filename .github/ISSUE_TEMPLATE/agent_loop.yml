@@ -1,0 +1,35 @@
+name: Agent loop question
+description: Ask about assistant writes, event intake, Gmail, OpenCLAW, or Codex handoff behavior.
+title: "[Agent Loop]: "
+labels: ["agent-loop", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Keep private payloads out of public issues. Use placeholders for account names, phone numbers, project ids, and mailbox data.
+
+  - type: textarea
+    id: event
+    attributes:
+      label: Source event or workflow
+      description: What triggers the loop?
+      placeholder: "Example: Gmail inbox event -> local listener -> Codex run -> BacBan API update."
+    validations:
+      required: true
+
+  - type: textarea
+    id: desired
+    attributes:
+      label: Desired board behavior
+      description: What should be created, updated, moved, completed, reopened, or marked waiting?
+    validations:
+      required: true
+
+  - type: textarea
+    id: guardrails
+    attributes:
+      label: Guardrails
+      description: What must the agent not do?
+      placeholder: "Example: no Gmail sends, no third-party messages, no publishing, no destructive changes."
+    validations:
+      required: true

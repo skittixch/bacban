@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: https://github.com/skittixch/bacban/security/policy
+    about: Report vulnerabilities privately. Do not open public issues for sensitive data.
+  - name: Demo setup
+    url: https://github.com/skittixch/bacban/blob/main/docs/DEMO.md
+    about: Start here for a safe sample board.

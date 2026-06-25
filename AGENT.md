@@ -1,4 +1,4 @@
-# Agent Project Rules: Kanban Board (BacBan)
+# Agent Project Rules: BacBan
 
 ## Architecture
 

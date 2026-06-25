@@ -55,8 +55,42 @@ const isDueSoonOrOverdue = (dueDate) => {
   return due <= Date.now() + (24 * 60 * 60 * 1000);
 };
 
+const parseCalendarDate = (value) => {
+  if (!value) return null;
+  if (value instanceof Date) {
+    const time = value.getTime();
+    return Number.isNaN(time) ? null : time;
+  }
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+
+  const normalized = String(value).trim();
+  if (!normalized) return null;
+
+  const dateOnly = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) {
+    const [, year, month, day] = dateOnly;
+    return new Date(Number(year), Number(month) - 1, Number(day)).getTime();
+  }
+
+  const parsed = Date.parse(normalized);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const clampPercent = (value) => Math.min(100, Math.max(0, value));
+
+const getTimelineProgress = (dateAdded, dueDate, currentDate = new Date()) => {
+  const start = parseCalendarDate(dateAdded);
+  const end = parseCalendarDate(dueDate);
+  const current = parseCalendarDate(currentDate);
+
+  if (!end || !current) return 0;
+  if (!start || end <= start) return current >= end ? 100 : 0;
+
+  return clampPercent(((current - start) / (end - start)) * 100);
+};
+
 const TaskCard = ({
-  task, boardId, columnId, columnPosition, columnTitle, taskIndex,
+  task, boardId, columnId, columnPosition, columnTitle, taskIndex, disableNativeDrag = false,
 }) => {
   const kanban = useKanbanContext();
   const {
@@ -105,6 +139,10 @@ const TaskCard = ({
   }
 
   const progress = getTaskProgress ? getTaskProgress(task) : null;
+  const hasDueDate = Boolean(String(task.dueDate || '').trim());
+  const timelinePercent = hasDueDate
+    ? getTimelineProgress(task.dateAdded || task.createdAt, task.dueDate)
+    : 0;
 
 
   const clickTimeout = useRef(null);
@@ -166,10 +204,10 @@ const TaskCard = ({
       <div
         ref={cardRef}
         data-task-card="true"
-        draggable={true}
-        onDragStart={handleDragStartLocal}
-        onDragEnd={handleDragEndLocal}
-        onDragOver={(e) => onDragOver(e, taskIndex, boardId, columnId)}
+        draggable={!disableNativeDrag}
+        onDragStart={disableNativeDrag ? undefined : handleDragStartLocal}
+        onDragEnd={disableNativeDrag ? undefined : handleDragEndLocal}
+        onDragOver={disableNativeDrag ? undefined : (e) => onDragOver(e, taskIndex, boardId, columnId)}
         onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
         onClick={handleCardClick}
         onContextMenu={(e) => {
@@ -208,6 +246,7 @@ const TaskCard = ({
         }}
         className={`relative task-card p-3 rounded-lg ${accentClass} group
           hover:shadow-md shadow-sm
+          ${hasDueDate ? 'has-task-timeline' : ''}
           ${isRecentlyChanged ? 'task-card-recent' : ''}
           ${isRecentlyChanged && isAttentionCard ? 'task-card-attention' : ''}
           ${isDragging ? 'task-dragging' : ''}
@@ -249,9 +288,9 @@ const TaskCard = ({
           </div>
         )}
 
-            <div className="flex justify-between items-start gap-2">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
+            <div className="task-card-content-grid">
+              <div className="task-card-body">
+                <div className="task-title-row">
                   {task.color && <span className="color-dot flex-shrink-0" style={{ background: task.color }} />}
                   <InlineEdit
                     ref={editInlineRef}
@@ -261,8 +300,8 @@ const TaskCard = ({
                     type="textarea"
                     trigger="doubleClick"
                     as="p"
-                    textClassName="task-text-clamp text-sm font-medium leading-relaxed whitespace-pre-wrap flex-1"
-                    className={`flex-1 p-1.5 text-sm border rounded-lg resize-none themed-ring focus:border-transparent bg-[var(--surface-input)] border-[var(--border-default)] text-[var(--text-primary)]`}
+                    textClassName="task-text-clamp task-title-text text-sm font-medium leading-relaxed whitespace-pre-wrap"
+                    className={`task-title-input p-1.5 text-sm border rounded-lg resize-none themed-ring focus:border-transparent bg-[var(--surface-input)] border-[var(--border-default)] text-[var(--text-primary)]`}
                     inputProps={{ rows: Math.min(5, Math.ceil(task.text.length / 40)) }}
                     renderText={() => textWithoutUrls}
                   />
@@ -289,7 +328,7 @@ const TaskCard = ({
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+              <div className="task-card-actions">
                 {progress && <ProgressRing done={progress.done} total={progress.total} />}
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
                   <button onClick={(e) => { e.stopPropagation(); editInlineRef.current?.startEditing(); }}
@@ -299,15 +338,20 @@ const TaskCard = ({
                 </div>
               </div>
             </div>
-            <div className="flex items-center justify-between mt-1.5">
-              <p className={`text-[11px] text-[var(--text-muted)]`}>{task.createdAt}</p>
-              {task.dueDate && (
-                <div className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex items-center gap-1 bg-[var(--color-danger-light)] text-[var(--color-danger)]`}>
+            {hasDueDate && (
+              <div
+                className="task-timeline"
+                aria-label={`Timeline ${timelinePercent.toFixed(2)} percent elapsed. Due ${task.dueDate}.`}
+              >
+                <div className="task-timeline-due">
                   <Calendar size={10} />
-                  {task.dueDate}
+                  <span>{task.dueDate}</span>
                 </div>
-              )}
-            </div>
+                <div className="task-timeline-track" aria-hidden="true">
+                  <span style={{ width: `${timelinePercent}%` }} />
+                </div>
+              </div>
+            )}
             <input
               type="date"
               id={`date-input-${task.id}`}

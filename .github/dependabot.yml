@@ -1,0 +1,25 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /kanban-frontend
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - frontend
+
+  - package-ecosystem: npm
+    directory: /kanban-backend
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - backend
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - github-actions
