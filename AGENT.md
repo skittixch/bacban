@@ -103,7 +103,7 @@ The `references` field is optional (backward-compatible). It stores sanitized HT
 
 `waitingOn` is optional. Use it only when Eric or an external party needs to act; recent non-done cards with `waitingOn`, waiting/hold/review column placement, or due-soon status receive the brighter attention glow.
 
-`priority` is optional. When an email explicitly states an ordered priority list, use `priority` as the 1-based rank, set `prioritySource` to `email`, set `priorityTotal` when the total list length is known, and use `priorityLabel` only when the sender provided a meaningful label. The frontend renders these as priority badges on cards and overlays. Do not infer an email priority list from tone alone.
+`priority` is optional. When an email explicitly states an ordered priority list, use `priority` as the 1-based rank, set `prioritySource` to `email`, set `priorityTotal` when the total list length is known, and use `priorityLabel` only when the sender provided a meaningful label. The frontend renders ranked items as numeric priority markers on cards and overlays. Do not infer an email priority list from tone alone.
 
 ## Gmail / Agent Intake
 

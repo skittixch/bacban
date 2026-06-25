@@ -253,6 +253,7 @@ const TaskCard = ({
         className={`relative task-card p-3 rounded-lg ${accentClass} group
           hover:shadow-md shadow-sm
           ${hasDueDate ? 'has-task-timeline' : ''}
+          ${priorityBadge ? 'has-priority-rank' : ''}
           ${isRecentlyChanged ? 'task-card-recent' : ''}
           ${isRecentlyChanged && isAttentionCard ? 'task-card-attention' : ''}
           ${isDragging ? 'task-dragging' : ''}
@@ -267,6 +268,19 @@ const TaskCard = ({
           cursor: isEditing ? 'default' : 'pointer',
         }}
       >
+        {priorityBadge && (
+          <span
+            className={`task-priority-rank task-priority-rank-${priorityBadge.kind} ${
+              priorityBadge.isTopPriority ? 'task-priority-rank-top' : ''
+            }`}
+            title={priorityBadge.title}
+            aria-label={priorityBadge.ariaLabel}
+            data-priority-rank={priorityBadge.rank}
+          >
+            {priorityBadge.rank}
+          </span>
+        )}
+
         {/* Waiting On Input at the top of the card if it's a waiting column */}
         {!isEditing && isWaitingColumn(columnTitle) && (
           <div className="waiting-on-bar mb-2.5 pb-2 border-b border-dashed border-amber-500/20" onClick={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
@@ -296,16 +310,6 @@ const TaskCard = ({
 
             <div className="task-card-content-grid">
               <div className="task-card-body">
-                {priorityBadge && (
-                  <div className="task-priority-badges" aria-label="Priority badges">
-                    <span
-                      className={`task-priority-badge task-priority-badge-${priorityBadge.kind}`}
-                      title={priorityBadge.title}
-                    >
-                      <span className="task-priority-badge-label">{priorityBadge.text}</span>
-                    </span>
-                  </div>
-                )}
                 <div className="task-title-row">
                   {task.color && <span className="color-dot flex-shrink-0" style={{ background: task.color }} />}
                   <InlineEdit

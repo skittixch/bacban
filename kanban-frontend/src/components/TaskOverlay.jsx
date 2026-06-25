@@ -210,7 +210,20 @@ const TaskOverlay = ({
         </div>
 
         {/* Body */}
-        <div className="overlay-body">
+        <div className={`overlay-body ${priorityBadge ? 'has-overlay-priority-rank' : ''}`}>
+          {priorityBadge && (
+            <span
+              className={`task-priority-rank overlay-priority-rank task-priority-rank-${priorityBadge.kind} ${
+                priorityBadge.isTopPriority ? 'task-priority-rank-top' : ''
+              }`}
+              title={priorityBadge.title}
+              aria-label={priorityBadge.ariaLabel}
+              data-priority-rank={priorityBadge.rank}
+            >
+              {priorityBadge.rank}
+            </span>
+          )}
+
           {/* Title area */}
           <div className="overlay-title-row">
             {task.color && (
@@ -241,14 +254,6 @@ const TaskOverlay = ({
 
           {/* Meta row */}
           <div className="overlay-meta">
-            {priorityBadge && (
-              <span
-                className={`task-priority-badge task-priority-badge-${priorityBadge.kind}`}
-                title={priorityBadge.title}
-              >
-                <span className="task-priority-badge-label">{priorityBadge.text}</span>
-              </span>
-            )}
             <span className="overlay-date">{task.createdAt}</span>
 
             {progress && (

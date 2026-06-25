@@ -21,11 +21,6 @@ const toPositiveInteger = (value) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 
-const makeRankText = (rank, total) => {
-  if (!rank) return '';
-  return total ? `P${rank}/${total}` : `P${rank}`;
-};
-
 export const getTaskPriorityBadge = (task = {}) => {
   const priorityList = task.priorityList && typeof task.priorityList === 'object'
     ? task.priorityList
@@ -40,25 +35,22 @@ export const getTaskPriorityBadge = (task = {}) => {
   const label = firstText(task.priorityLabel, priorityList.label, task.priorityBadge, priorityList.badge);
   const source = firstText(task.prioritySource, priorityList.source);
 
-  if (!rank && !label && !source) return null;
+  if (!rank) return null;
 
   const sourceIsEmail = /email|gmail|mail/i.test(source);
-  const rankText = makeRankText(rank, total);
-  const fallbackText = [sourceIsEmail ? 'Email' : source, rankText || 'Priority']
-    .filter(Boolean)
-    .join(' ');
-  const text = label
-    ? [rankText, label].filter(Boolean).join(' ')
-    : fallbackText;
+  const sourceLabel = sourceIsEmail ? 'Email' : source;
   const title = [
-    source ? `Source: ${source}` : '',
+    sourceLabel ? `${sourceLabel} priority` : 'Priority',
     rank ? `Rank: ${rank}${total ? ` of ${total}` : ''}` : '',
-    label ? `Label: ${label}` : '',
+    label,
   ].filter(Boolean).join('. ');
 
   return {
-    text,
-    title: title || text,
+    ariaLabel: title,
     kind: sourceIsEmail ? 'email' : 'default',
+    rank,
+    title,
+    total,
+    isTopPriority: rank === 1,
   };
 };
