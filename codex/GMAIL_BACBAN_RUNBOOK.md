@@ -17,7 +17,10 @@ Incoming Gmail is not handled by native Codex hooks. The current event path is:
 
 Cutover status belongs in local private operations notes, not in public Git. In this repo, treat Gmail Pub/Sub as the primary intake shape when configured, and verify the current watch each run with `gog gmail watch status --account <configured-gmail-account> --json --no-input`. Keep any scheduled Codex sweep as a safety net, not the main trigger.
 
-Important distinction: OpenCLAW is the inbound/event and WhatsApp gateway. BacBan API readback is the source of truth for whether board work succeeded.
+Important distinction: OpenCLAW is the inbound/event gateway. BacBan API readback is the source of truth for whether board work succeeded.
+
+Private status target: Telegram.
+Current verified fallback: WhatsApp, until Telegram sends and receives are proven end to end.
 
 Before changing event classification, same-method status behavior, dedupe, or ledger handling, read `codex\event-intake\event-rules.md`. Inbound Gmail/OpenCLAW events should be appended to the private ledger with `codex\event-intake\Write-AgentLedgerEvent.ps1`; the default runtime log is `codex\agent-ledger\events.jsonl` and must stay out of Git.
 
@@ -37,7 +40,7 @@ Do not expect native Codex hooks to receive Gmail Pub/Sub or wake Codex by thems
 
 The simplest future native-ish shape would be:
 
-`Gmail Pub/Sub listener -> local handler -> codex exec or Codex SDK -> BacBan API -> optional WhatsApp`
+`Gmail Pub/Sub listener -> local handler -> codex exec or Codex SDK -> BacBan API -> optional private status channel`
 
 ## Gmail Triage Rules
 
@@ -72,9 +75,9 @@ Gmail remains read-only unless Eric explicitly approves send, archive, delete, l
 
 Before notifying Eric about a coworker/client ask, inspect the same Gmail thread for newer Eric sent mail or other clear outgoing activity from Eric.
 
-If Eric meaningfully responded after the ask, classify the event as `already-handled-by-Eric` or `status-only`, update durable state only when useful, and do not send WhatsApp or email. A newer meaningful reply, uploaded asset, shared link, or other clear outgoing action is enough evidence to suppress a duplicate nudge.
+If Eric meaningfully responded after the ask, classify the event as `already-handled-by-Eric` or `status-only`, update durable state only when useful, and do not send Telegram, WhatsApp, or email. A newer meaningful reply, uploaded asset, shared link, or other clear outgoing action is enough evidence to suppress a duplicate nudge.
 
-If the ask is addressed to Eric or clearly depends on Eric and no meaningful Eric response exists yet, allow a 20-minute grace window from the latest actionable inbound message before nudging. If it is still unanswered after that window, a concise private WhatsApp nudge to Eric is allowed and should include the proposed reply for approval. If the message is newer than 20 minutes, record or track it only if needed and do not nudge unless there is a separate urgent deadline.
+If the ask is addressed to Eric or clearly depends on Eric and no meaningful Eric response exists yet, allow a 20-minute grace window from the latest actionable inbound message before nudging. If it is still unanswered after that window, a concise private Telegram nudge to Eric is allowed and should include the proposed reply for approval. If the message is newer than 20 minutes, record or track it only if needed and do not nudge unless there is a separate urgent deadline.
 
 Do not send Gmail replies, create Gmail drafts, or reply to third parties without Eric's explicit approval. For any first live email test of a third-party reply flow, send only a private test copy to Eric's approved private address or authenticated `me`. After Eric approves that test and the exact recipient/thread, then and only then send to the intended person.
 
@@ -130,11 +133,11 @@ The BacBan frontend highlights cards changed in the last 24 hours:
 
 Recent cards get a cyan AI-style outline glow. Recent cards that need attention get a brighter amber/pink/cyan glow. A card needs attention when it is not done and has `waitingOn`, is in a waiting/hold/review column, or is due soon/overdue.
 
-## WhatsApp Boundary
+## Telegram Boundary
 
-Eric has approved concise private WhatsApp summaries to the configured private WhatsApp target for this Gmail-to-BacBan workflow only when BacBan changed or Eric's attention is needed.
+Eric has approved concise private Telegram summaries to the configured private Telegram target for this Gmail-to-BacBan workflow only when BacBan changed or Eric's attention is needed.
 
-For any incoming email Eric should personally look at, the WhatsApp message should answer:
+For any incoming email Eric should personally look at, the status message should answer:
 
 - who is waiting on Eric
 - what they need him to do
@@ -158,7 +161,7 @@ If WhatsApp delivery fails, do not mark the BacBan write as failed until board w
 
 As of 2026-06-25, phone-origin WhatsApp messages for the BacBan/OpenCLAW path should route to the dedicated OpenClaw agent `bacban-whatsapp-intake`, not the broad default `main` agent. The intake workspace is private local state, heartbeat-disabled, and should acknowledge quickly or fail closed for broad/unsafe work.
 
-If you keep local operator probes under `codex\scripts\`, use these shapes before changing WhatsApp behavior or when replies regress:
+If you keep local operator probes under `codex\scripts\`, use these shapes before changing WhatsApp intake behavior or when replies regress:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\codex\scripts\repair-openclaw-whatsapp.ps1 -DryRunMessage -RetryCount 3 -RetryDelaySeconds 1
@@ -168,14 +171,16 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\codex\scripts\prove-opencl
 
 Private proof artifacts should live under `codex\outputs\` and stay out of Git. A healthy proof should show the latest phone-origin WhatsApp direct session belongs to `bacban-whatsapp-intake`, the broad `main` session did not advance, the tail shows a successful message, and recovery/reliability probes have no critical findings.
 
+Telegram cutover work is separate from the phone-origin intake proof. Do not mark the private-status channel as cut over until a live Telegram send/receive roundtrip is verified and the docs point to the new channel end to end.
+
 The local WhatsApp harnesses use the named mutex `Local\BacBanOpenClawCliLock` so overlapping operator probes do not race OpenClaw CLI calls. If a BacBan due-notification send uses `codex\scripts\bacban-notify.ps1`, it must check the OpenClaw send exit code before marking notifications sent.
 
 ## Eric-Only Completion / Blocked Replies
 
-Eric has approved same-method status replies when an incoming email or WhatsApp task has been completed or marked blocked. Use the method that contacted the system when available:
+Eric has approved same-method status replies when an incoming email or Telegram task has been completed or marked blocked. Use the method that contacted the system when available:
 
 - Email-origin tasks: send or reply only to Eric's approved private email address or authenticated `me`.
-- WhatsApp-origin tasks: reply only to the configured private WhatsApp target.
+- Telegram-origin tasks: reply only to the configured private Telegram target.
 
 The status message should be short and say whether the task completed or is blocked, what changed, what was verified, and the smallest next action if blocked. This approval does not authorize messages to anyone except Eric, client-visible delivery, publishing, payment, credential, destructive, or production actions.
 

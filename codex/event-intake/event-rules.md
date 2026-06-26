@@ -17,7 +17,7 @@ The event path should produce:
 
 Use this order when sources disagree:
 
-1. Live message/thread data from Gmail, WhatsApp, or the source connector.
+1. Live message/thread data from Gmail, Telegram, WhatsApp, or the source connector.
 2. Live project files, task board state, docs, manifests, and handoffs.
 3. Current automation config and health/readback output.
 4. Durable runbooks and memory notes.
@@ -63,15 +63,15 @@ For Gmail-origin events:
 - Prefer matching sender, subject, thread id, message id, history id, and existing BacBan references before creating a new card.
 - Use the Gmail connector or current Gmail context first when available.
 - Do not treat newsletters, routine statements, ads, generic edit alerts, or ambiguous transactional mail as actionable without confirming the underlying work signal.
-- Before nudging Eric about a coworker/client ask, read the same thread for newer Eric sent mail. If Eric has meaningfully responded after the ask, classify the event as `already-handled-by-Eric` or `status-only` and do not send WhatsApp or email.
-- If an Eric-owned ask has no meaningful Eric response, wait 20 minutes from the latest actionable inbound message before sending a private WhatsApp nudge, unless a separate urgent deadline is explicit.
+- Before nudging Eric about a coworker/client ask, read the same thread for newer Eric sent mail. If Eric has meaningfully responded after the ask, classify the event as `already-handled-by-Eric` or `status-only` and do not send Telegram, WhatsApp, or email.
+- If an Eric-owned ask has no meaningful Eric response, wait 20 minutes from the latest actionable inbound message before sending a private Telegram nudge, unless a separate urgent deadline is explicit.
 - Do not send Gmail replies, create Gmail drafts, or reply to third parties without Eric's explicit approval. A first live email test for a third-party reply flow must go only to Eric's approved private address or authenticated `me`; send to the intended person only after Eric approves that test and the exact recipient/thread.
 
 For OpenCLAW/WhatsApp-origin events:
 
 - OpenCLAW is the inbound/status gateway, not proof that BacBan changed.
 - BacBan API readback is the source of truth for board success.
-- Send WhatsApp status only to Eric's configured private target.
+- Send Telegram status only to Eric's configured private target.
 - Do not send to third parties or groups without explicit approval.
 
 ## BacBan Write Rules

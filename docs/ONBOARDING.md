@@ -2,7 +2,7 @@
 
 This guide is for someone who wants to run BacBan on their own Windows machine and then, if useful, teach an assistant to update the board safely.
 
-Start small. The board is useful by itself. The Gmail, WhatsApp, and Codex pieces only make sense after you trust the local board and understand the write contract.
+Start small. The board is useful by itself. The Gmail, WhatsApp, Telegram, and Codex pieces only make sense after you trust the local board and understand the write contract.
 
 Keep account names, tokens, OAuth client files, OpenCLAW config, local phone numbers, and live board data out of Git.
 
@@ -27,7 +27,7 @@ Pick one mode and get it working before moving to the next.
 - Gmail to board: let Gmail events create or update BacBan cards after readback verification.
 - Gmail plus private status: combine Gmail intake with private status messages only when the board changed or you need to act.
 
-Do not enable outbound Gmail sends, third-party WhatsApp messages, publishing, payment actions, or destructive changes without explicit approval for that action class.
+Do not enable outbound Gmail sends, third-party Telegram or WhatsApp messages, publishing, payment actions, or destructive changes without explicit approval for that action class.
 
 ## 1. Run BacBan
 
@@ -78,7 +78,7 @@ The assistant should treat an incoming message as intake, not completion. It sho
 
 ## 4. Test One Assistant Loop
 
-Before adding Gmail or WhatsApp, test a boring local loop:
+Before adding Gmail, WhatsApp, or Telegram, test a boring local loop:
 
 1. Ask the assistant to inspect one real project note or email excerpt you provide manually.
 2. Have it decide whether an existing card should be updated or a new card should be created.
@@ -93,7 +93,7 @@ This is the trust-building step. If one card cannot be updated clearly, do not a
 Prerequisites:
 
 - OpenCLAW installed and available on `PATH`.
-- A WhatsApp channel configured in OpenCLAW.
+- A private Telegram target for owner status, plus the current WhatsApp fallback until Telegram is verified end to end.
 
 Useful setup and verification commands:
 
@@ -113,7 +113,9 @@ Keep the private-status boundary narrow:
 - Not OK by default: messages to clients, vendors, teammates, or groups.
 - Not OK by default: messages that imply a task was completed when the assistant only logged intake.
 
-Store OpenCLAW config and channel credentials in local config only. Do not commit them.
+Store OpenCLAW config, Telegram bot credentials, and channel credentials in local config only. Do not commit them.
+
+If Telegram is the intended owner status channel, keep WhatsApp as a temporary fallback until a live Telegram send/receive proof exists and the cutover note in `docs/TELEGRAM_CUTOVER.md` is complete.
 
 ## 6. Add Gmail Events
 

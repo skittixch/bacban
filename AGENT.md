@@ -107,6 +107,6 @@ The `references` field is optional (backward-compatible). It stores sanitized HT
 
 ## Gmail / Agent Intake
 
-- The durable cross-system runbook for Gmail-to-BacBan triage, OpenCLAW, Codex native hooks, WhatsApp summaries, Git/private-state boundaries, and future Codex SDK replacement work is `codex/GMAIL_BACBAN_RUNBOOK.md`.
+- The durable cross-system runbook for Gmail-to-BacBan triage, OpenCLAW, Codex native hooks, Telegram cutover, private status summaries, Git/private-state boundaries, and future Codex SDK replacement work is `codex/GMAIL_BACBAN_RUNBOOK.md`.
 - Native Codex hooks are lifecycle hooks inside an existing Codex turn. They do not receive Gmail Pub/Sub or wake Codex by themselves.
 - Current incoming Gmail push uses OpenCLAW/gog as the event gateway and invokes a stable `gmail-bacban-triage` Codex session.

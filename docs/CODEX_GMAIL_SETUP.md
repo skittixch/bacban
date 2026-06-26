@@ -15,7 +15,7 @@ Gmail Pub/Sub watch
   -> OpenCLAW hook mapping
   -> Codex triage run in this repo
   -> BacBan API write/readback
-  -> optional private WhatsApp summary
+  -> optional private Telegram summary
 ```
 
 Use this path when you want the same local-authenticated Codex behavior that is already working on this machine.
@@ -88,7 +88,7 @@ The hook prompt should require:
 - Set `updatedAt` on every agent change.
 - Set `doneAt` only when moving a card to done/completed.
 - Set `waitingOn` when Eric or another party needs action.
-- Send a concise private WhatsApp summary only when BacBan changed or Eric's attention is needed.
+- Send a concise private Telegram summary only when BacBan changed or Eric's attention is needed.
 
 ## BacBan Write Contract
 
@@ -139,7 +139,7 @@ For a service process, use the Codex SDK instead of shelling out if you need thr
 
 The approved notification behavior is narrow:
 
-- OK: private WhatsApp summary to Eric when a Gmail-triggered BacBan change occurred or Eric needs to look at an email.
+- OK: private Telegram summary to Eric when a Gmail-triggered BacBan change occurred or Eric needs to look at an email.
 - The message should say who is waiting on Eric and what they need him to do.
 - Not OK without explicit approval: Gmail sends, Gmail drafts, Gmail archive/delete/label changes, messages to third parties, or unrelated outbound notifications.
 
@@ -154,7 +154,7 @@ If Gmail mail arrives but BacBan does not change:
 5. Check BacBan API health and write/readback.
 6. Check whether the email was informational and correctly treated as no-op.
 
-If WhatsApp fails, treat that separately from BacBan. A notification failure does not mean the board write failed.
+If Telegram fails, treat that separately from BacBan. A notification failure does not mean the board write failed. Until the Telegram cutover is proven end to end, the existing WhatsApp fallback remains the live status path.
 
 ## Source Docs
 
@@ -164,4 +164,4 @@ If WhatsApp fails, treat that separately from BacBan. A notification failure doe
 - Codex SDK: https://developers.openai.com/codex/sdk
 - Codex CLI: https://developers.openai.com/codex/cli
 
-For a broader first-run path that includes BacBan, WhatsApp status, Gmail events, and the assistant write contract, see `docs/ONBOARDING.md`.
+For a broader first-run path that includes BacBan, Telegram status, Gmail events, and the assistant write contract, see `docs/ONBOARDING.md`.

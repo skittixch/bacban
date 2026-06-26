@@ -24,7 +24,7 @@ At a high level, BacBan is six pieces:
 2. A small Express API that persists one full JSON board document.
 3. A data model that gives assistants stable card fields such as `updatedAt`, `doneAt`, `waitingOn`, and `references`.
 4. A write contract that makes every assistant board edit auditable: health, backup, full read, narrow edit, validation, full write, health, readback.
-5. Event-intake rules for Gmail, WhatsApp/OpenCLAW, manual prompts, scheduled sweeps, and future listeners.
+5. Event-intake rules for Gmail, WhatsApp/OpenCLAW intake, Telegram cutover, manual prompts, scheduled sweeps, and future listeners.
 6. Durable context files so future assistant sessions can continue from project files and board state instead of chat memory alone.
 
 If you copy only the UI, you get a nice local board. If you copy the full pattern, you get a local operating system for agent-assisted work.
@@ -92,7 +92,7 @@ Browser
   -> JSON data file in kanban-data/kanban-data.json
 
 Optional agent intake
-  -> Gmail Pub/Sub, WhatsApp/OpenCLAW, scheduled sweep, or manual prompt
+  -> Gmail Pub/Sub, WhatsApp/OpenCLAW intake, scheduled sweep, or manual prompt
   -> event classification and private ledger
   -> Codex or another assistant running in the repo root
   -> BacBan API write/readback
@@ -346,18 +346,21 @@ Gmail Pub/Sub listener
   -> optional private notification
 ```
 
-## WhatsApp And OpenCLAW Workflow
+## Private Status And OpenCLAW Workflow
 
-OpenCLAW is the inbound/status gateway. BacBan API readback is the truth for whether board work succeeded.
+OpenCLAW is the inbound gateway. BacBan API readback is the truth for whether board work succeeded.
+
+Private status target: Telegram.
+Current verified fallback: WhatsApp, until Telegram sends and receives are proven end to end.
 
 Approved private status behavior:
 
-- OK: private WhatsApp summary to the owner when BacBan changed, work completed, work blocked, or the owner needs attention.
+- OK: private Telegram summary to the owner when BacBan changed, work completed, work blocked, or the owner needs attention.
 - OK: concise wording in the shape `<person/org> is waiting on you to <specific action>. <short context/project>.`
 - OK: same-method completion/blocked reply only to the owner.
-- Not OK by default: Gmail replies to third parties, WhatsApp messages to clients/groups, publishing, destructive actions, payment actions, credential actions, or production deploys.
+- Not OK by default: Gmail replies to third parties, Telegram or WhatsApp messages to clients/groups, publishing, destructive actions, payment actions, credential actions, or production deploys.
 
-Current phone-origin WhatsApp intake should route to a dedicated `bacban-whatsapp-intake` OpenCLAW agent rather than a broad default agent. The intake should acknowledge quickly or fail closed with the exact missing input.
+Current phone-origin WhatsApp intake should route to a dedicated `bacban-whatsapp-intake` OpenCLAW agent rather than a broad default agent. That inbound path remains separate from the owner status channel and should acknowledge quickly or fail closed with the exact missing input.
 
 Local operator harnesses used in this workflow include:
 
@@ -368,6 +371,8 @@ Local operator harnesses used in this workflow include:
 - `codex\scripts\openclaw-whatsapp-reliability.ps1`: combined reliability probe, with dry-run and optional live private probe modes.
 - `codex\scripts\bacban-notify.ps1`: due/attention notification helper that must check OpenCLAW send success before marking notifications sent.
 
+Telegram delivery and cutover notes live in `docs/TELEGRAM_CUTOVER.md`. Until a live Telegram proof exists, keep the WhatsApp fallback path documented and do not mark the cutover complete.
+
 These harnesses use a named mutex, `Local\BacBanOpenClawCliLock`, so overlapping CLI probes do not race each other. Keep outputs under `codex\outputs/` and keep private runtime evidence out of Git.
 
 ## Same-Method Owner Replies
@@ -375,7 +380,7 @@ These harnesses use a named mutex, `Local\BacBanOpenClawCliLock`, so overlapping
 The current approval boundary allows concise completion or blocked status back to the owner through the same private method that originated the task:
 
 - Email-origin task: private email only to the owner's approved private address or authenticated `me`.
-- WhatsApp-origin task: private WhatsApp only to the configured private target.
+- Telegram-origin task: private Telegram only to the configured private target. Use the current verified WhatsApp fallback only while the Telegram cutover is still pending.
 
 The message should say whether the task completed or is blocked, what changed, what was verified, and the smallest next action if blocked. This does not authorize replies to clients, coworkers, vendors, groups, or public channels.
 

@@ -15,7 +15,7 @@
 - Treat prior memory as context, not proof. Verify live repo, Docker, API, and file state before writing.
 - Prefer the proven pattern from recent work: one real proof case, then a manifest/job file, then a repeatable harness with dry-run/evidence output.
 - Keep app files in the real project root. Put Codex-only scratch, audits, job manifests, screenshots, and harness outputs under `codex/`.
-- For Gmail-triggered BacBan triage, OpenCLAW/Google/Gmail hooks, WhatsApp summaries, Codex native hooks, or future Hermes-style replacement work, read `codex/GMAIL_BACBAN_RUNBOOK.md` before changing behavior.
+- For Gmail-triggered BacBan triage, OpenCLAW/Google/Gmail hooks, Telegram cutover, private status summaries, Codex native hooks, or future Hermes-style replacement work, read `codex/GMAIL_BACBAN_RUNBOOK.md` before changing behavior.
 
 ## Loop Library overlay
 
