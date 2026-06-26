@@ -134,6 +134,16 @@ const SubtaskBoard = ({
     setAddingToCol(null);
   };
 
+  const getVisibleEntries = (colId) =>
+    (items[colId] || [])
+      .map((sub, rawIndex) => ({ sub, rawIndex }))
+      .filter(({ sub }) => !sub.hidden);
+
+  const getVisibleDropIndex = (entries, visibleIndex) => {
+    if (entries.length === 0) return 0;
+    if (visibleIndex >= entries.length) return entries[entries.length - 1].rawIndex + 1;
+    return entries[visibleIndex].rawIndex;
+  };
 
   const isLastCol = (colId) => colId === columns[columns.length - 1];
 
@@ -152,14 +162,15 @@ const SubtaskBoard = ({
     >
       <div className="subtask-columns">
         {columns.map((colId) => {
-          const colItems = items[colId] || [];
+          const colEntries = getVisibleEntries(colId);
+          const colItems = colEntries.map(({ sub }) => sub);
           const isDone = isLastCol(colId);
           return (
             <div
               key={colId}
               className={`subtask-column`}
               onDragOver={handleSubDragOver}
-              onDrop={(e) => handleSubDrop(e, colId, colItems.length)}
+              onDrop={(e) => handleSubDrop(e, colId, getVisibleDropIndex(colEntries, colEntries.length))}
             >
               <div className="subtask-col-header">
                 <span className="subtask-col-title">{columnTitles[colId]}</span>
@@ -167,13 +178,13 @@ const SubtaskBoard = ({
               </div>
 
               <div className="subtask-items">
-                {colItems.map((sub, subIdx) => (
+                {colEntries.map(({ sub, rawIndex }) => (
                   <div
                     key={sub.id}
                     draggable
-                    onDragStart={(e) => handleSubDragStart(e, sub, colId, subIdx)}
+                    onDragStart={(e) => handleSubDragStart(e, sub, colId, rawIndex)}
                     onDragOver={handleSubDragOver}
-                    onDrop={(e) => handleSubDrop(e, colId, subIdx)}
+                    onDrop={(e) => handleSubDrop(e, colId, rawIndex)}
                     onDragEnd={handleSubDragEnd}
                     onClick={(e) => handlePillClick(e, sub, colId)}
                     className={`subtask-pill ${isDone ? 'done' : ''} ${

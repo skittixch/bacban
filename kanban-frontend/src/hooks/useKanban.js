@@ -87,10 +87,11 @@ const initSubtasks = () => ({
 const getTaskProgress = (task) => {
   if (!task.subtasks || !task.subtasks.items) return null;
   const items = task.subtasks.items;
-  const total = Object.values(items).flat().length;
+  const visibleItems = Object.values(items).flat().filter(subtask => !subtask.hidden);
+  const total = visibleItems.length;
   if (total === 0) return null;
   const doneCol = task.subtasks.columns[task.subtasks.columns.length - 1]; // last col = done
-  const done = (items[doneCol] || []).length;
+  const done = (items[doneCol] || []).filter(subtask => !subtask.hidden).length;
   return { done, total };
 };
 
