@@ -1,6 +1,6 @@
 # Gmail to BacBan Agent Runbook
 
-Last updated: 2026-06-25
+Last updated: 2026-06-29
 
 This file is the durable handoff for the Gmail-triggered BacBan workflow across Codex, OpenCLAW, BacBan, and future Hermes-style agents.
 
@@ -25,6 +25,15 @@ Current verified fallback: WhatsApp, until Telegram sends and receives are prove
 Before changing event classification, same-method status behavior, dedupe, or ledger handling, read `codex\event-intake\event-rules.md`. Inbound Gmail/OpenCLAW events should be appended to the private ledger with `codex\event-intake\Write-AgentLedgerEvent.ps1`; the default runtime log is `codex\agent-ledger\events.jsonl` and must stay out of Git.
 
 Live hook wiring as of 2026-06-24: the OpenCLAW mapping `gmail-bacban-triage` includes a ledger-first requirement in its `messageTemplate`, so every rendered Gmail event should run `Write-AgentLedgerEvent.ps1` before triage, BacBan writes, notifications, or project work.
+
+## Local Automation Guardrails
+
+Use these local guardrails before treating a transient tool problem as a task failure:
+
+- `CODEX_HOME` may be unset in scheduled PowerShell shells. Resolve Codex home as `$env:CODEX_HOME` when present, otherwise use `C:\Users\eric\.codex`. Do not let memory writeback fail after the real work has succeeded just because the env var is missing.
+- Prefer `Invoke-RestMethod` for BacBan API reads/writes, but if a PowerShell web cmdlet throws a `NullReferenceException`, body/header serialization error, or other local cmdlet wrapper failure, retry with `curl.exe` and parse the JSON result. Keep the API contract the same: full-state GET, backup, full-state POST, health, readback.
+- For private WhatsApp sends, prefer `X:\_bacsapps\bacban\codex\scripts\send-openclaw-whatsapp.ps1`. It uses the shared `Local\BacBanOpenClawCliLock`, retries once after restarting the OpenCLAW gateway for retryable gateway failures such as `ECONNREFUSED`, `GatewayTransportError`, websocket `1006`, or timeout, and writes private evidence under `codex\outputs\openclaw-whatsapp-send`.
+- If the helper is unavailable, a direct `openclaw message send --channel whatsapp ... --json` failure should be handled the same way: verify the BacBan write/readback separately, restart the gateway once for retryable transport errors, retry the private send once, then report notification failure as a last-mile issue rather than rolling back board state.
 
 ## Native Codex Hooks Finding
 
@@ -157,6 +166,14 @@ This approval does not authorize:
 
 If WhatsApp delivery fails, do not mark the BacBan write as failed until board write/readback has been checked separately.
 
+When a private WhatsApp status is needed, prefer:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File X:\_bacsapps\bacban\codex\scripts\send-openclaw-whatsapp.ps1 -Message "<short private status>"
+```
+
+Use `-DryRun` for non-delivery probes. Do not send test messages to Eric just to prove a no-op run.
+
 ## Direct WhatsApp Intake Reliability
 
 As of 2026-06-25, phone-origin WhatsApp messages for the BacBan/OpenCLAW path should route to the dedicated OpenClaw agent `bacban-whatsapp-intake`, not the broad default `main` agent. The intake workspace is private local state, heartbeat-disabled, and should acknowledge quickly or fail closed for broad/unsafe work.
@@ -208,9 +225,11 @@ Useful checks:
 
 ```powershell
 Invoke-RestMethod -Uri 'http://127.0.0.1:3001/health'
+curl.exe -fsS http://127.0.0.1:3001/health
 gog gmail watch status --account <configured-gmail-account> --json --no-input
 openclaw config validate
 openclaw status --json
+powershell -NoProfile -ExecutionPolicy Bypass -File X:\_bacsapps\bacban\codex\scripts\repair-openclaw-whatsapp.ps1 -Repair -RestartOnDisconnected
 docker compose ps
 git status --short --ignored
 ```

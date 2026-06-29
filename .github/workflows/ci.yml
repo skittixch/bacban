@@ -19,6 +19,35 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Guard Scorecard permission shape
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+
+          workflow = Path(".github/workflows/scorecard.yml")
+          text = workflow.read_text(encoding="utf-8")
+          top_level = text.split("\njobs:", 1)[0]
+          forbidden = ["security-events: write", "id-token: write"]
+          offenders = [
+              permission
+              for permission in forbidden
+              if re.search(rf"(?m)^  {re.escape(permission)}\s*$", top_level)
+          ]
+          missing_job_scope = [
+              permission
+              for permission in forbidden
+              if not re.search(rf"(?m)^      {re.escape(permission)}\s*$", text)
+          ]
+          if offenders or missing_job_scope:
+              print("Scorecard permissions must keep write scopes job-local.")
+              print(f"workflow-level write permissions found: {offenders}")
+              print(f"job-level write permissions missing: {missing_job_scope}")
+              sys.exit(1)
+          PY
+
       - name: Validate compose file
         run: docker compose config --quiet
 

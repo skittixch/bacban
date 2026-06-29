@@ -14,6 +14,8 @@ jobs:
     name: OpenSSF Scorecard
     if: github.repository_visibility == 'public'
     runs-on: ubuntu-latest
+    # Keep publish-related write permissions job-scoped. OpenSSF rejects
+    # Scorecard publishing when workflow-level write permissions are present.
     permissions:
       contents: read
       security-events: write
