@@ -10,6 +10,25 @@ Default event log:
 codex\agent-ledger\events.jsonl
 ```
 
+Backend board-change evidence:
+
+```text
+codex\agent-ledger\board-events.jsonl
+codex\agent-ledger\deleted-cards.jsonl
+codex\agent-ledger\deleted-card-feedback.jsonl
+codex\agent-ledger\collection-routing.jsonl
+```
+
+`board-events.jsonl` is appended after successful full-state BacBan writes that
+create, update, move, reorder, complete, reopen, or delete cards. `deleted-cards.jsonl`
+holds compact tombstones for deleted top-level cards so future inbox intake can
+check whether a candidate email looks like something the owner already trashed.
+`deleted-card-feedback.jsonl` holds optional reasons entered from the delete
+toast, such as "newsletter noise"; those reasons are included in deleted-card
+similarity checks.
+`collection-routing.jsonl` holds compact Work/Life cross-board move hints so
+future intake can route similar cards to the owner-corrected collection.
+
 Append records through:
 
 ```powershell

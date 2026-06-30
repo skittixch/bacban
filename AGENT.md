@@ -99,11 +99,19 @@ The `references` field is optional (backward-compatible). It stores sanitized HT
 
 `updatedAt` is optional but should be set as a UTC ISO timestamp for every agent/UI create, update, or move. It drives the recent-change glow.
 
+In On Hold, Waiting, or Blocked columns, cards whose latest information timestamp is more than 14 days old are treated as UI limbo: they stay in the data, but the board hides them under an `and N more...` limbo row until they are updated. If a new incoming message makes a limbo card actionable again, update `references`/`updatedAt` and move it to To Do or the appropriate necessary column. If the message only says to keep waiting, update `references`/`updatedAt` and keep or move it in On Hold so it reappears for a fresh waiting window.
+
 `doneAt` may be an older numeric timestamp or a UTC ISO timestamp. New writes should use UTC ISO. A truthy valid `doneAt` marks recently completed cards for cleanup/opacity logic.
 
 `waitingOn` is optional. Use it only when Eric or an external party needs to act; recent non-done cards with `waitingOn`, waiting/hold/review column placement, or due-soon status receive the brighter attention glow.
 
-`priority` is optional. When an email explicitly states an ordered priority list, use `priority` as the 1-based rank, set `prioritySource` to `email`, set `priorityTotal` when the total list length is known, and use `priorityLabel` only when the sender provided a meaningful label. The frontend renders ranked items as numeric priority markers on cards and overlays. Do not infer an email priority list from tone alone.
+`priority` is optional. When an email explicitly states an ordered priority list, use `priority` as the original 1-based rank, set `prioritySource` to `email`, set `priorityTotal` when the total list length is known, and use `priorityLabel` only when the sender provided a meaningful label. Set `priorityGroupId` to a stable source id such as the Gmail thread id when available. The frontend renders numeric priority markers from active, non-completed cards, compresses remaining active badges to the next active rank, and shows completed priority cards as the same circle with a checkmark. Reopening the original higher-priority card restores the original ordering. Do not infer an email priority list from tone alone.
+
+## Agent-side event evidence
+
+Every successful full-state `POST /api/data` is diffed by the backend. Meaningful board changes append compact private messages to `codex\agent-ledger\board-events.jsonl`; deleted top-level cards append tombstones to `codex\agent-ledger\deleted-cards.jsonl`; optional delete-toast reasons append to `codex\agent-ledger\deleted-card-feedback.jsonl`; Work/Life cross-board moves append routing hints to `codex\agent-ledger\collection-routing.jsonl`. These runtime files are ignored by Git. Gmail/OpenCLAW intake should query `POST /api/deleted-cards/check` before creating a new card from a candidate email so previously deleted bulk/noise items and delete reasons are treated as duplicate/noise warnings instead of being recreated blindly. It should also query `POST /api/collection-routing/check` before choosing Work versus Life so owner moves can steer similar future tasks to the right collection.
+
+The backend returns `X-BacBan-State-Hash` on board reads/writes. Browser UI saves include that hash as `X-BacBan-Base-Hash`; browser-looking saves without a base hash are rejected with `428 Precondition Required`, and stale hashes are rejected with `409 Conflict`. Operator/Codex writes can omit the base hash only after doing the normal guarded full-state read immediately before posting.
 
 ## Gmail / Agent Intake
 

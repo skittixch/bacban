@@ -7,9 +7,14 @@ services:
       - "3001:3001"
     volumes:
       - ./kanban-data:/data # Bind mount for persistent storage
+      - ./codex/agent-ledger:/agent-ledger # Private local assistant event evidence
     environment:
       - PORT=3001
       - DATA_FILE=/data/kanban-data.json
+      - AGENT_EVENT_FILE=/agent-ledger/board-events.jsonl
+      - DELETED_CARDS_FILE=/agent-ledger/deleted-cards.jsonl
+      - DELETED_CARD_FEEDBACK_FILE=/agent-ledger/deleted-card-feedback.jsonl
+      - COLLECTION_ROUTING_FILE=/agent-ledger/collection-routing.jsonl
     networks:
       - npm_network
 

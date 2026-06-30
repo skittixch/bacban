@@ -128,6 +128,14 @@ BacBan currently includes:
 - Project color labels with user-editable color names.
 - Theme selection, dark mode, compact/comfortable card density, completed-card fading, retention days, and optional completion celebration.
 - Server-backed storage through the local API.
+- Backend board-change messages for assistant-side awareness of board edits made
+  outside the current Codex loop.
+- Deleted-card tombstones plus a similarity check API so inbox intake can avoid
+  recreating bulk/noise cards the owner already removed.
+- Optional delete-reason feedback from the delete toast so owner intent becomes
+  private agent-side signal for future intake.
+- Work/Life move hints plus a collection-routing check API so owner-corrected
+  moves can steer similar future cards to the right board.
 - Browser-local storage mode for private experiments and hosted demo use.
 - JSON import/export for full board documents.
 - Demo reset through the settings panel or `?resetDemo=1`.
@@ -216,6 +224,15 @@ Field rules:
 - Older numeric `doneAt` values remain supported for compatibility.
 - Use `waitingOn` only when a person or external system needs to act.
 - Keep `references` human-scannable. Prefer dated updates with latest signal, work done, evidence, verification, status, and next action.
+- Cards in On Hold, Waiting, or Blocked columns with no fresh information for
+  more than 14 days are UI limbo: they remain in the board data but collapse
+  under an `and N more...` row. New actionable information should update the
+  card and move it to To Do or the needed column; "wait longer" information
+  should update the card and keep it visible in On Hold.
+- Treat stored priority ranks as original source evidence. The UI shows
+  completed priority cards with a checked priority circle and compresses active
+  badge numbers around the remaining active cards; reopening a completed
+  priority card restores the original ordering.
 
 ## Agent Write Contract
 
@@ -299,6 +316,8 @@ Writer:
 Ledger records include source/gateway, dedupe keys, Gmail/OpenCLAW ids when available, BacBan card location when available, classification, status, verification, and next action.
 
 Do not store raw email bodies, OAuth tokens, API keys, service-account keys, WhatsApp session data, or full private message dumps in the ledger. Runtime ledger files stay ignored by Git.
+
+The backend also writes local board-change messages to `codex\agent-ledger\board-events.jsonl`, deleted-card tombstones to `codex\agent-ledger\deleted-cards.jsonl`, optional delete-toast reasons to `codex\agent-ledger\deleted-card-feedback.jsonl`, and Work/Life routing hints to `codex\agent-ledger\collection-routing.jsonl`. Before a Gmail/OpenCLAW intake run creates a new card, it should call `POST /api/deleted-cards/check` with the sender, subject, and snippet. A match means "inspect before creating"; it is not a destructive Gmail action. Before choosing Work versus Life, it should call `POST /api/collection-routing/check` with the candidate title/subject/snippet and prefer the recommended board unless current evidence clearly overrides it.
 
 ## Gmail To BacBan Workflow
 

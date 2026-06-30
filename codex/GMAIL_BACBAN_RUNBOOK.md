@@ -24,6 +24,8 @@ Current verified fallback: WhatsApp, until Telegram sends and receives are prove
 
 Before changing event classification, same-method status behavior, dedupe, or ledger handling, read `codex\event-intake\event-rules.md`. Inbound Gmail/OpenCLAW events should be appended to the private ledger with `codex\event-intake\Write-AgentLedgerEvent.ps1`; the default runtime log is `codex\agent-ledger\events.jsonl` and must stay out of Git.
 
+BacBan board writes also append backend-generated private board-change messages to `codex\agent-ledger\board-events.jsonl`. Deleted top-level cards append tombstones to `codex\agent-ledger\deleted-cards.jsonl`; optional delete-toast reasons append to `codex\agent-ledger\deleted-card-feedback.jsonl`; use those tombstones and reasons as a guardrail before recreating mail-derived cards. Work/Life cross-board moves append routing hints to `codex\agent-ledger\collection-routing.jsonl`; use those hints before choosing the target board for similar future cards.
+
 Live hook wiring as of 2026-06-24: the OpenCLAW mapping `gmail-bacban-triage` includes a ledger-first requirement in its `messageTemplate`, so every rendered Gmail event should run `Write-AgentLedgerEvent.ps1` before triage, BacBan writes, notifications, or project work.
 
 ## Local Automation Guardrails
@@ -32,6 +34,8 @@ Use these local guardrails before treating a transient tool problem as a task fa
 
 - `CODEX_HOME` may be unset in scheduled PowerShell shells. Resolve Codex home as `$env:CODEX_HOME` when present, otherwise use `C:\Users\eric\.codex`. Do not let memory writeback fail after the real work has succeeded just because the env var is missing.
 - Prefer `Invoke-RestMethod` for BacBan API reads/writes, but if a PowerShell web cmdlet throws a `NullReferenceException`, body/header serialization error, or other local cmdlet wrapper failure, retry with `curl.exe` and parse the JSON result. Keep the API contract the same: full-state GET, backup, full-state POST, health, readback.
+- Before creating a BacBan card from a candidate Gmail item, call `POST http://127.0.0.1:3001/api/deleted-cards/check` with subject, sender/from, and a short snippet. If it matches a deleted-card tombstone or delete-toast reason, classify as likely duplicate/noise unless current evidence clearly proves a new actionable task.
+- Before choosing Work versus Life for a new BacBan card, call `POST http://127.0.0.1:3001/api/collection-routing/check` with the candidate title/subject/snippet. Prefer the recommended board unless the current evidence clearly overrides the historical owner move.
 - For private WhatsApp sends, prefer `X:\_bacsapps\bacban\codex\scripts\send-openclaw-whatsapp.ps1`. It uses the shared `Local\BacBanOpenClawCliLock`, retries once after restarting the OpenCLAW gateway for retryable gateway failures such as `ECONNREFUSED`, `GatewayTransportError`, websocket `1006`, or timeout, and writes private evidence under `codex\outputs\openclaw-whatsapp-send`.
 - If the helper is unavailable, a direct `openclaw message send --channel whatsapp ... --json` failure should be handled the same way: verify the BacBan write/readback separately, restart the gateway once for retryable transport errors, retry the private send once, then report notification failure as a last-mile issue rather than rolling back board state.
 
@@ -114,6 +118,7 @@ Before any BacBan write:
 6. POST the full updated state to `/api/data`.
 7. Verify health again.
 8. Read back the changed card or cards.
+9. When relevant, read back `GET /api/agent-events?limit=5` to confirm the backend recorded the board-side message.
 
 Prefer updating an existing relevant card over creating a duplicate. If an email clearly asks for a separate task, create or update a visible card instead of burying the request only in another card's references.
 
@@ -125,7 +130,8 @@ Use compatible JSON fields only.
 - `updatedAt`: UTC ISO string, for every create/update/move.
 - `doneAt`: UTC ISO string when moved to done/completed.
 - `waitingOn`: only when Eric or an external party needs to act; this drives attention highlighting. If `waitingOn` is Eric, route the card to `To Do` unless Eric explicitly asks for it to be held.
-- Explicit email priority lists: if the email plainly gives an ordered priority list, set `priority` to the 1-based rank on every affected card, set `prioritySource` to `email`, set `priorityTotal` when known, and set `priorityLabel` only when the sender gave useful wording for the rank. Keep the card order aligned with the stated list when practical, and mention the source email in `references`. Do not infer this from tone alone.
+- Limbo: On Hold/Waiting/Blocked cards with no fresh information for more than 14 days are hidden under `and N more...` in the UI. When a new message matches one, do not duplicate it. If the message restarts work, update `references`/`updatedAt` and move it to To Do or the appropriate necessary column. If it just says to wait longer, update `references`/`updatedAt` and keep or move it in On Hold so it reappears for a fresh waiting window.
+- Explicit email priority lists: if the email plainly gives an ordered priority list, set `priority` to the original 1-based rank on every affected card, set `prioritySource` to `email`, set `priorityTotal` when known, set `priorityGroupId` to the Gmail thread id or other stable list id when available, and set `priorityLabel` only when the sender gave useful wording for the rank. Keep the card order aligned with the stated list when practical, and mention the source email in `references`. The frontend renders completed priority cards with a checked badge and compresses active badge ranks around remaining unfinished cards; do not mutate the original stored rank when a card moves to Done. Do not infer priority lists from tone alone.
 - `references`: dated, human-scannable notes with latest signal, work done, evidence, verification, status, and next action.
 
 Older numeric `doneAt` values are still supported by the UI.

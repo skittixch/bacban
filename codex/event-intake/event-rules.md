@@ -61,6 +61,8 @@ For Gmail-origin events:
 
 - Gmail is read-only unless Eric explicitly approves send, draft, archive, delete, or label changes.
 - Prefer matching sender, subject, thread id, message id, history id, and existing BacBan references before creating a new card.
+- Before creating a new BacBan card, check deleted-card tombstones and delete-toast feedback through `POST http://127.0.0.1:3001/api/deleted-cards/check` using sender/from, subject, and a short snippet. A match is a duplicate/noise warning, not an automatic deletion; inspect current evidence before creating the card.
+- Before choosing Work versus Life for a new card, check owner-corrected collection-routing hints through `POST http://127.0.0.1:3001/api/collection-routing/check` using the candidate title/subject/snippet. Prefer the recommended board when the current evidence does not clearly override it.
 - Use the Gmail connector or current Gmail context first when available.
 - Do not treat newsletters, routine statements, ads, generic edit alerts, or ambiguous transactional mail as actionable without confirming the underlying work signal.
 - Before nudging Eric about a coworker/client ask, read the same thread for newer Eric sent mail. If Eric has meaningfully responded after the ask, classify the event as `already-handled-by-Eric` or `status-only` and do not send Telegram, WhatsApp, or email.
@@ -89,11 +91,15 @@ Before any board write:
 
 Set `updatedAt` on every agent-created or agent-changed card. Set `doneAt` only when moving to Done or Completed. Use `waitingOn` only when Eric or another party needs to act.
 
-When a Gmail or WhatsApp event explicitly states an ordered priority list, preserve it on each affected card with `priority` as the 1-based rank, `prioritySource` set to `email` or `whatsapp`, `priorityTotal` when known, and `priorityLabel` only for useful sender-provided wording. Do not infer priority-list badges from tone or urgency words without an explicit order.
+If a matching existing card is in On Hold/Waiting/Blocked and has gone quiet for more than 14 days, treat it as limbo. Do not duplicate it. If the new event is actionable, update `references` and `updatedAt`, then move it to To Do or the appropriate necessary column. If the new event only asks to wait longer, update `references` and `updatedAt`, then keep or move it in On Hold so it reappears instead of staying hidden.
+
+When a Gmail or WhatsApp event explicitly states an ordered priority list, preserve it on each affected card with `priority` as the original 1-based rank, `prioritySource` set to `email` or `whatsapp`, `priorityTotal` when known, `priorityGroupId` set to the source thread/list id when available, and `priorityLabel` only for useful sender-provided wording. Completed cards keep their original stored rank and show a checked priority badge, while active badge ranks compress around the remaining unfinished cards. Do not infer priority-list badges from tone or urgency words without an explicit order.
 
 ## Ledger Rules
 
 The ledger is private runtime evidence. Keep `codex\agent-ledger\events.jsonl` ignored by Git.
+
+The backend also writes private board-side evidence to `codex\agent-ledger\board-events.jsonl`, deleted-card tombstones to `codex\agent-ledger\deleted-cards.jsonl`, optional delete-toast reasons to `codex\agent-ledger\deleted-card-feedback.jsonl`, and Work/Life cross-board move hints to `codex\agent-ledger\collection-routing.jsonl` after successful full-state board POSTs or UI feedback sends. Keep these ignored by Git and do not store raw email bodies or secrets there.
 
 Record one JSON object per line with:
 
