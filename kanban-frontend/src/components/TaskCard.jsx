@@ -4,7 +4,7 @@ import { useFocus } from '../contexts/FocusContext';
 import { useKanbanContext } from '../contexts/KanbanContext';
 import { useContextMenu } from '../contexts/ContextMenuContext';
 import InlineEdit from './InlineEdit';
-import { getTaskPriorityBadge } from '../utils/priorityBadges';
+import { getTaskPriorityBadge, isCompletionColumnTitle } from '../utils/priorityBadges';
 
 const ProgressRing = ({ done, total, size = 22 }) => {
   const r = (size - 4) / 2;
@@ -90,8 +90,50 @@ const getTimelineProgress = (dateAdded, dueDate, currentDate = new Date()) => {
   return clampPercent(((current - start) / (end - start)) * 100);
 };
 
+const getDeadlineEndTime = (value) => {
+  if (!value) return null;
+
+  const normalized = String(value).trim();
+  if (!normalized) return null;
+
+  const isoDateOnly = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoDateOnly) {
+    const [, year, month, day] = isoDateOnly;
+    return new Date(Number(year), Number(month) - 1, Number(day), 23, 59, 59, 999).getTime();
+  }
+
+  const slashDateOnly = normalized.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashDateOnly) {
+    const [, month, day, year] = slashDateOnly;
+    return new Date(Number(year), Number(month) - 1, Number(day), 23, 59, 59, 999).getTime();
+  }
+
+  const parsed = Date.parse(normalized);
+  if (Number.isNaN(parsed)) return null;
+
+  if (!/[tT]|\d{1,2}:\d{2}/.test(normalized)) {
+    const date = new Date(parsed);
+    date.setHours(23, 59, 59, 999);
+    return date.getTime();
+  }
+
+  return parsed;
+};
+
+const getFinishMarkerPercent = (dateAdded, dueDate, doneAt) => {
+  const start = parseCalendarDate(dateAdded);
+  const deadline = getDeadlineEndTime(dueDate);
+  const finished = parseTaskTime(doneAt);
+
+  if (!start || !deadline || !finished) return null;
+  if (finished > deadline || deadline <= start) return null;
+
+  return clampPercent(((finished - start) / (deadline - start)) * 100);
+};
+
 const TaskCard = ({
   task, boardId, columnId, columnPosition, columnTitle, taskIndex, disableNativeDrag = false,
+  activePriorityBadge,
 }) => {
   const kanban = useKanbanContext();
   const {
@@ -144,11 +186,21 @@ const TaskCard = ({
   }
 
   const progress = getTaskProgress ? getTaskProgress(task) : null;
-  const priorityBadge = getTaskPriorityBadge(task);
+  const isCompletedColumn = isCompletionColumnTitle(columnTitle);
+  const priorityBadge = getTaskPriorityBadge(task, {
+    activeBadge: activePriorityBadge,
+    isCompleted: isCompletedColumn,
+  });
   const hasDueDate = Boolean(String(task.dueDate || '').trim());
   const timelinePercent = hasDueDate
     ? getTimelineProgress(task.dateAdded || task.createdAt, task.dueDate)
     : 0;
+  const finishMarkerPercent = hasDueDate && isCompletedColumn
+    ? getFinishMarkerPercent(task.dateAdded || task.createdAt, task.dueDate, task.doneAt)
+    : null;
+  const timelineLabel = finishMarkerPercent !== null
+    ? `Timeline ${timelinePercent.toFixed(2)} percent elapsed. Due ${task.dueDate}. Finished before the deadline at ${finishMarkerPercent.toFixed(2)} percent of the timeline.`
+    : `Timeline ${timelinePercent.toFixed(2)} percent elapsed. Due ${task.dueDate}.`;
 
 
   const clickTimeout = useRef(null);
@@ -271,13 +323,20 @@ const TaskCard = ({
         {priorityBadge && (
           <span
             className={`task-priority-rank task-priority-rank-${priorityBadge.kind} ${
-              priorityBadge.isTopPriority ? 'task-priority-rank-top' : ''
+              priorityBadge.isCompleted ? 'task-priority-rank-completed' : ''
+            } ${
+              priorityBadge.isTopPriority && !priorityBadge.isCompleted ? 'task-priority-rank-top' : ''
             }`}
             title={priorityBadge.title}
             aria-label={priorityBadge.ariaLabel}
-            data-priority-rank={priorityBadge.rank}
+            data-priority-rank={priorityBadge.isCompleted ? (priorityBadge.originalRank || priorityBadge.rank) : priorityBadge.rank}
+            data-priority-status={priorityBadge.isCompleted ? 'completed' : 'active'}
           >
-            {priorityBadge.rank}
+            {priorityBadge.isCompleted ? (
+              <span className="task-priority-done-check" aria-hidden="true" />
+            ) : (
+              priorityBadge.rank
+            )}
           </span>
         )}
 
@@ -361,14 +420,21 @@ const TaskCard = ({
             {hasDueDate && (
               <div
                 className="task-timeline"
-                aria-label={`Timeline ${timelinePercent.toFixed(2)} percent elapsed. Due ${task.dueDate}.`}
+                aria-label={timelineLabel}
               >
                 <div className="task-timeline-due">
                   <Calendar size={10} />
                   <span>{task.dueDate}</span>
                 </div>
                 <div className="task-timeline-track" aria-hidden="true">
-                  <span style={{ width: `${timelinePercent}%` }} />
+                  <span className="task-timeline-progress" style={{ width: `${timelinePercent}%` }} />
+                  {finishMarkerPercent !== null && (
+                    <span
+                      className="task-timeline-finish-marker"
+                      style={{ left: `${finishMarkerPercent}%` }}
+                      title="Finished before deadline"
+                    />
+                  )}
                 </div>
               </div>
             )}

@@ -81,6 +81,8 @@ const KanbanBoardInner = () => {
       && window.localStorage.getItem(DEMO_BANNER_DISMISSED_KEY) === 'true'
   ));
   const [undoNotification, setUndoNotification] = useState(null);
+  const [deleteFeedbackText, setDeleteFeedbackText] = useState('');
+  const [deleteFeedbackStatus, setDeleteFeedbackStatus] = useState('idle');
   const isMobileViewport = useViewportMatch('(max-width: 700px)');
   const queryParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const mobileLayoutEnabled = Boolean(
@@ -92,7 +94,7 @@ const KanbanBoardInner = () => {
     boards, boardOrder, isDarkMode, currentTheme, isLoading, saveStatus, projectColors, settings, storageConfig, isDemoMode,
     setIsDarkMode, setCurrentTheme, updateProjectColorName,
     updateSettings, updateStorageConfig, exportData, importData, resetDemoData,
-    deletedTask, undoDelete, deletedSubtask, undoDeleteSubtask,
+    deletedTask, undoDelete, submitDeleteFeedback, deletedSubtask, undoDeleteSubtask,
   } = kanban;
 
 
@@ -138,6 +140,26 @@ const KanbanBoardInner = () => {
       return () => clearTimeout(t);
     }
   }, [undoNotification]);
+
+  useEffect(() => {
+    setDeleteFeedbackText('');
+    setDeleteFeedbackStatus('idle');
+  }, [deletedTask?.task?.id, deletedTask?.deletedAt]);
+
+  const handleDeleteFeedbackSubmit = async (event) => {
+    event.preventDefault();
+    const reason = deleteFeedbackText.trim();
+    if (!reason || deleteFeedbackStatus === 'saving') return;
+
+    setDeleteFeedbackStatus('saving');
+    const result = await submitDeleteFeedback(reason);
+    if (result.ok) {
+      setDeleteFeedbackText('');
+      setDeleteFeedbackStatus('saved');
+    } else {
+      setDeleteFeedbackStatus(result.reason === 'server-storage-required' ? 'local-only' : 'error');
+    }
+  };
 
   useEffect(() => {
     document.body.className = isDarkMode ? 'dark-mode' : '';
@@ -366,10 +388,46 @@ const KanbanBoardInner = () => {
         <div className="undo-toast"><span>{undoNotification}</span></div>
       )}
       {deletedTask && (
-        <div className="undo-toast">
-          <span>Task deleted</span>
-          <button onClick={undoDelete}>Undo</button>
-          <span className="text-gray-500 text-xs">or Ctrl+Z</span>
+        <div className="undo-toast delete-feedback-toast">
+          <div className="delete-feedback-top">
+            <span>Task deleted</span>
+            <div className="delete-feedback-actions">
+              <button type="button" onClick={undoDelete}>Undo</button>
+              <span className="text-gray-500 text-xs">or Ctrl+Z</span>
+            </div>
+          </div>
+          <form className="delete-feedback-form" onSubmit={handleDeleteFeedbackSubmit}>
+            <label htmlFor="delete-feedback-reason">Why did you delete this?</label>
+            <div className="delete-feedback-input-row">
+              <input
+                id="delete-feedback-reason"
+                type="text"
+                value={deleteFeedbackText}
+                onChange={(event) => {
+                  setDeleteFeedbackText(event.target.value);
+                  if (deleteFeedbackStatus !== 'saving') setDeleteFeedbackStatus('idle');
+                }}
+                placeholder="Optional reason"
+                maxLength={240}
+                disabled={deleteFeedbackStatus === 'saving' || deleteFeedbackStatus === 'saved'}
+              />
+              <button
+                type="submit"
+                disabled={!deleteFeedbackText.trim() || deleteFeedbackStatus === 'saving' || deleteFeedbackStatus === 'saved'}
+              >
+                {deleteFeedbackStatus === 'saving' ? 'Saving' : 'Save'}
+              </button>
+            </div>
+            {deleteFeedbackStatus === 'saved' && (
+              <span className="delete-feedback-status">Saved for future intake</span>
+            )}
+            {deleteFeedbackStatus === 'local-only' && (
+              <span className="delete-feedback-status is-warning">Feedback is only recorded with Docker API storage</span>
+            )}
+            {deleteFeedbackStatus === 'error' && (
+              <span className="delete-feedback-status is-error">Could not save feedback</span>
+            )}
+          </form>
         </div>
       )}
 

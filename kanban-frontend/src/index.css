@@ -173,6 +173,60 @@ textarea {
   color: var(--theme-primary);
 }
 
+.limbo-summary {
+  align-items: center;
+  background: color-mix(in srgb, var(--surface-tertiary) 72%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--border-default) 82%, transparent);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  font-family: inherit;
+  gap: 8px;
+  justify-content: space-between;
+  min-height: 34px;
+  padding: 7px 10px;
+  text-align: left;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+  width: 100%;
+}
+
+.limbo-summary:hover,
+.limbo-summary.is-expanded {
+  background: color-mix(in srgb, var(--surface-tertiary) 88%, var(--theme-primary-light));
+  border-color: color-mix(in srgb, var(--theme-primary) 44%, var(--border-default));
+  color: var(--text-secondary);
+}
+
+.limbo-summary span {
+  font-size: 12px;
+  font-weight: 750;
+  min-width: 0;
+}
+
+.limbo-summary small {
+  border: 1px solid color-mix(in srgb, var(--border-default) 72%, transparent);
+  border-radius: 999px;
+  color: var(--text-disabled);
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 3px 6px;
+  text-transform: uppercase;
+}
+
+.limbo-task-shell {
+  opacity: 0.58;
+  transition: opacity 150ms ease, filter 150ms ease;
+}
+
+.limbo-task-shell:hover,
+.limbo-task-shell:focus-within {
+  filter: none;
+  opacity: 0.92;
+}
+
 /* ---- Drag Feedback ---- */
 .task-dragging {
   opacity: 0.4;
@@ -254,6 +308,94 @@ textarea {
 
 .undo-toast button:hover {
   background: rgba(96, 165, 250, 0.3);
+}
+
+.delete-feedback-toast {
+  min-width: min(92vw, 420px);
+  max-width: 92vw;
+  align-items: stretch;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.85rem 0.95rem;
+}
+
+.delete-feedback-top,
+.delete-feedback-actions,
+.delete-feedback-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.delete-feedback-top {
+  justify-content: space-between;
+}
+
+.delete-feedback-actions {
+  flex-shrink: 0;
+}
+
+.delete-feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.delete-feedback-form label {
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.delete-feedback-input-row input {
+  min-width: 0;
+  flex: 1;
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  padding: 0.38rem 0.55rem;
+  outline: none;
+}
+
+.delete-feedback-input-row input:focus {
+  border-color: var(--theme-primary);
+  box-shadow: 0 0 0 2px var(--theme-primary-light);
+}
+
+.delete-feedback-input-row input::placeholder {
+  color: var(--text-muted);
+}
+
+.delete-feedback-input-row button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.delete-feedback-status {
+  color: var(--color-success);
+  font-size: 0.72rem;
+}
+
+.delete-feedback-status.is-warning {
+  color: var(--color-warning);
+}
+
+.delete-feedback-status.is-error {
+  color: var(--color-danger);
+}
+
+@media (max-width: 520px) {
+  .delete-feedback-top {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .delete-feedback-input-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
 
 /* ---- Animations ---- */
@@ -820,6 +962,36 @@ textarea {
   border-color: var(--priority-rank-ring);
 }
 
+.task-priority-rank-completed {
+  border-color: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 0 0 1px rgba(34, 197, 94, 0.28),
+    0 0 14px var(--priority-rank-glow),
+    0 4px 10px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34);
+}
+
+.task-priority-rank-completed::after {
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: inherit;
+  content: "";
+  inset: 2px;
+  opacity: 0.68;
+  position: absolute;
+}
+
+.task-priority-done-check {
+  border-bottom: 2px solid #fff;
+  border-left: 2px solid #fff;
+  display: block;
+  height: 6px;
+  margin-top: -2px;
+  position: relative;
+  transform: rotate(-45deg);
+  width: 10px;
+  z-index: 1;
+}
+
 .task-priority-rank-top {
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.22),
@@ -911,15 +1083,41 @@ textarea {
   bottom: 0;
   height: 4px;
   background: color-mix(in srgb, var(--border-default) 74%, transparent);
-  overflow: hidden;
+  overflow: visible;
 }
 
-.task-timeline-track span {
+.task-timeline-progress {
   display: block;
   height: 100%;
   max-width: 100%;
   background: linear-gradient(90deg, var(--theme-primary), var(--color-warning), var(--color-danger));
   transition: width 0.28s ease;
+}
+
+.task-timeline-finish-marker {
+  position: absolute;
+  bottom: 0;
+  width: 1px;
+  height: 15px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.16),
+    0 0 8px rgba(255, 255, 255, 0.45);
+  transform: translateX(-0.5px);
+  z-index: 2;
+}
+
+.task-timeline-finish-marker::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 1px;
+  width: 8px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 1px 1px 1px 0;
+  clip-path: polygon(0 0, 100% 18%, 100% 78%, 0 100%);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.22);
 }
 
 .task-card-recent {

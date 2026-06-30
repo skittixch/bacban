@@ -1,9 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Plus, ChevronUp, ChevronDown, Trash2, X } from 'lucide-react';
 import { useKanbanContext } from '../contexts/KanbanContext';
 import { useContextMenu } from '../contexts/ContextMenuContext';
 import TaskCard from './TaskCard';
 import InlineEdit from './InlineEdit';
+import { getActivePriorityBadgeMap } from '../utils/priorityBadges';
+import { partitionLimboTasks } from '../utils/limboTasks';
 
 const Board = ({ boardId, board }) => {
   const kanban = useKanbanContext();
@@ -33,6 +35,7 @@ const Board = ({ boardId, board }) => {
   const [showNewTaskInput, setShowNewTaskInput] = useState(null);
   const [newTaskText, setNewTaskText] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [expandedLimboColumns, setExpandedLimboColumns] = useState({});
 
   const inputRef = useRef(null);
 
@@ -45,6 +48,9 @@ const Board = ({ boardId, board }) => {
     title: board.columnTitles[columnId],
     tasks: board.tasks[columnId] || [],
   }));
+  const priorityBadgeMap = useMemo(() => (
+    getActivePriorityBadgeMap(board, boardId)
+  ), [board, boardId]);
 
 
   // Styles now handled automatically by .board-column and .board-container token CSS classes
@@ -62,6 +68,45 @@ const Board = ({ boardId, board }) => {
     if (pos === 'middle' || pos === 'only') return '#f59e0b';
     return '#94a3b8';
   };
+
+  const toggleLimboColumn = (columnId) => {
+    const key = `${boardId}:${columnId}`;
+    setExpandedLimboColumns(prev => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const renderLimboSummary = (column, limboCount, isExpanded) => (
+    <button
+      type="button"
+      className={`limbo-summary ${isExpanded ? 'is-expanded' : ''}`}
+      onClick={() => toggleLimboColumn(column.id)}
+      aria-expanded={isExpanded}
+      title={isExpanded ? 'Hide limbo cards' : 'Show limbo cards'}
+    >
+      <span>{isExpanded ? 'hide limbo' : `and ${limboCount} more...`}</span>
+      <small>limbo</small>
+    </button>
+  );
+
+  const renderTaskEntry = (column, index, entry, isLimbo = false) => (
+    <div key={taskEntryKey(entry, isLimbo)} className={isLimbo ? 'limbo-task-shell' : undefined}>
+      <TaskCard
+        task={entry.task}
+        boardId={boardId}
+        columnId={column.id}
+        columnPosition={getColumnPosition(index)}
+        columnTitle={column.title}
+        taskIndex={entry.taskIndex}
+        activePriorityBadge={priorityBadgeMap.get(String(entry.task.id))}
+      />
+    </div>
+  );
+
+  const taskEntryKey = (entry, isLimbo = false) => (
+    `${isLimbo ? 'limbo' : 'task'}-${entry.task.id ?? entry.taskIndex}`
+  );
 
   return (
     <div
@@ -148,18 +193,25 @@ const Board = ({ boardId, board }) => {
           {!board.collapsed && (
             <div className="p-2">
               <div className="flex gap-2 overflow-x-auto">
-                {columns.map((column, index) => (
-                  <div
-                    key={column.id}
-                    draggable
-                    onDragStart={(e) => onColumnDragStart(e, column.id, boardId, index)}
-                    onDragOver={(e) => onColumnDragOver(e, index, boardId)}
-                    onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                    onDragEnd={onColumnDragEnd}
-                    className={`board-column p-2 flex-1 min-w-[220px] flex flex-col group/col
-                      ${draggedColumn === column.id && draggedColumnBoard === boardId ? 'opacity-40 rotate-1 scale-95' : ''}
-                    `}
-                  >
+                {columns.map((column, index) => {
+                  const { visibleTasks, limboTasks } = partitionLimboTasks(column.tasks, column.title);
+                  const limboKey = `${boardId}:${column.id}`;
+                  const limboExpanded = Boolean(expandedLimboColumns[limboKey]);
+                  const firstVisibleTask = visibleTasks[0];
+                  const remainingVisibleTasks = visibleTasks.slice(1);
+
+                  return (
+                    <div
+                      key={column.id}
+                      draggable
+                      onDragStart={(e) => onColumnDragStart(e, column.id, boardId, index)}
+                      onDragOver={(e) => onColumnDragOver(e, index, boardId)}
+                      onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                      onDragEnd={onColumnDragEnd}
+                      className={`board-column p-2 flex-1 min-w-[220px] flex flex-col group/col
+                        ${draggedColumn === column.id && draggedColumnBoard === boardId ? 'opacity-40 rotate-1 scale-95' : ''}
+                      `}
+                    >
                     {/* Column accent bar */}
                     <div
                       className="column-header-accent"
@@ -239,53 +291,49 @@ const Board = ({ boardId, board }) => {
                       </div>
                     )}
 
-                    {/* Tasks list */}
-                    <div
-                      className="flex-1 space-y-2 overflow-y-auto max-h-[60vh] min-h-[60px]"
-                      onDragOver={onDragOver}
-                      onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                      onDrop={(e) => onTaskDrop(e, boardId, column.id)}
-                      onDoubleClick={(e) => {
-                        if (e.target === e.currentTarget) {
-                          setShowNewTaskInput(column.id);
-                        }
-                      }}
-                      onContextMenu={(e) => {
-                        showContextMenu(e, [
-                          {
-                            label: 'Add Task',
-                            icon: <Plus size={14} />,
-                            onClick: () => setShowNewTaskInput(column.id)
-                          }
-                        ]);
-                      }}
-                    >
-                      {column.tasks.length === 0 ? (
-                        <div
-                          className="column-empty cursor-pointer"
-                          onClick={() => setShowNewTaskInput(column.id)}
-                          onDragOver={onDragOver}
-                          onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                          title="Click to add a task"
-                        >
-                          + Add a task
-                        </div>
-                      ) : (
-                        column.tasks.map((task, taskIndex) => (
-                          <TaskCard
-                            key={task.id}
-                            task={task}
-                            boardId={boardId}
-                            columnId={column.id}
-                            columnPosition={getColumnPosition(index)}
-                            columnTitle={column.title}
-                            taskIndex={taskIndex}
-                          />
-                        ))
-                      )}
+                          {/* Tasks list */}
+                          <div
+                            className="flex-1 space-y-2 overflow-y-auto max-h-[60vh] min-h-[60px]"
+                            onDragOver={onDragOver}
+                            onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                            onDrop={(e) => onTaskDrop(e, boardId, column.id)}
+                            onDoubleClick={(e) => {
+                              if (e.target === e.currentTarget) {
+                                setShowNewTaskInput(column.id);
+                              }
+                            }}
+                            onContextMenu={(e) => {
+                              showContextMenu(e, [
+                                {
+                                  label: 'Add Task',
+                                  icon: <Plus size={14} />,
+                                  onClick: () => setShowNewTaskInput(column.id)
+                                }
+                              ]);
+                            }}
+                          >
+                            {visibleTasks.length === 0 && limboTasks.length === 0 ? (
+                              <div
+                                className="column-empty cursor-pointer"
+                                onClick={() => setShowNewTaskInput(column.id)}
+                                onDragOver={onDragOver}
+                                onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                title="Click to add a task"
+                              >
+                                + Add a task
+                              </div>
+                            ) : (
+                              <>
+                                {firstVisibleTask && renderTaskEntry(column, index, firstVisibleTask)}
+                                {limboTasks.length > 0 && renderLimboSummary(column, limboTasks.length, limboExpanded)}
+                                {limboExpanded && limboTasks.map(entry => renderTaskEntry(column, index, entry, true))}
+                                {remainingVisibleTasks.map(entry => renderTaskEntry(column, index, entry))}
+                              </>
+                            )}
+                          </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
               </div>
             </div>

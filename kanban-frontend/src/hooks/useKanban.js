@@ -18,6 +18,7 @@ const STORAGE_CONFIG_KEY = 'bacban.storageConfig';
 const BROWSER_DATA_KEY = 'bacban.browserData';
 const DEMO_BROWSER_DATA_KEY = 'bacban.demo.browserData';
 const STORAGE_MODES = ['server', 'browser'];
+const DELETE_TOAST_TIMEOUT_MS = 12000;
 
 const DEFAULT_STORAGE_CONFIG = {
   mode: 'server',
@@ -283,6 +284,7 @@ export default function useKanban() {
   const pendingLocalSaveRef = useRef(false);
   const skipNextHistoryPushRef = useRef(false);
   const lastRemoteSnapshotRef = useRef(null);
+  const lastRemoteHashRef = useRef(null);
   const currentBoardSnapshotRef = useRef(null);
 
   // ---- Undo/Redo History ----
@@ -337,13 +339,22 @@ export default function useKanban() {
     }
 
     try {
+      const headers = { 'Content-Type': 'application/json', 'X-BacBan-Actor': 'browser-ui' };
+      if (lastRemoteHashRef.current) {
+        headers['X-BacBan-Base-Hash'] = lastRemoteHashRef.current;
+      }
+
       const response = await fetch(`${resolveApiUrl(activeConfig)}/api/data`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(normalizedData),
       });
       if (response.ok) {
+        lastRemoteHashRef.current = response.headers.get('X-BacBan-State-Hash') || lastRemoteHashRef.current;
         lastRemoteSnapshotRef.current = getDataSnapshot(normalizedData);
+      } else if (response.status === 409) {
+        lastRemoteHashRef.current = response.headers.get('X-BacBan-State-Hash') || lastRemoteHashRef.current;
+        console.warn('BacBan save blocked because the server board changed since this tab last loaded it.');
       }
       return response.ok;
     } catch (error) {
@@ -390,8 +401,10 @@ export default function useKanban() {
         return false;
       }
 
+      const remoteHash = response.headers.get('X-BacBan-State-Hash');
       const data = await response.json();
       const remoteSnapshot = getDataSnapshot(prepareLoadedData(data));
+      lastRemoteHashRef.current = remoteHash || lastRemoteHashRef.current;
 
       if (initial || remoteSnapshot !== lastRemoteSnapshotRef.current) {
         if (!initial && pendingLocalSaveRef.current) return true;
@@ -635,9 +648,16 @@ export default function useKanban() {
     setBoards(prev => {
       const task = prev[boardId].tasks[columnId].find(t => t.id === taskId);
       if (task) {
-        setDeletedTask({ task, boardId, columnId });
+        setDeletedTask({
+          task,
+          boardId,
+          boardTitle: prev[boardId].title || boardId,
+          columnId,
+          columnTitle: prev[boardId].columnTitles?.[columnId] || columnId,
+          deletedAt: nowIso(),
+        });
         if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
-        undoTimeoutRef.current = setTimeout(() => setDeletedTask(null), 5000);
+        undoTimeoutRef.current = setTimeout(() => setDeletedTask(null), DELETE_TOAST_TIMEOUT_MS);
       }
       return {
         ...prev,
@@ -706,6 +726,40 @@ export default function useKanban() {
     });
     setDeletedTask(null);
     if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
+  }, [deletedTask]);
+
+  const submitDeleteFeedback = useCallback(async (reason) => {
+    const trimmedReason = (reason || '').trim();
+    if (!deletedTask || !trimmedReason) return { ok: false, skipped: true };
+
+    const activeConfig = normalizeStorageConfig(storageConfigRef.current);
+    if (activeConfig.mode !== 'server') {
+      return { ok: false, skipped: true, reason: 'server-storage-required' };
+    }
+
+    try {
+      const response = await fetch(`${resolveApiUrl(activeConfig)}/api/deleted-cards/feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-BacBan-Actor': 'browser-ui',
+        },
+        body: JSON.stringify({
+          reason: trimmedReason,
+          task: deletedTask.task,
+          boardId: deletedTask.boardId,
+          boardTitle: deletedTask.boardTitle,
+          columnId: deletedTask.columnId,
+          columnTitle: deletedTask.columnTitle,
+          deletedAt: deletedTask.deletedAt,
+        }),
+      });
+
+      return { ok: response.ok, status: response.status };
+    } catch (error) {
+      console.error('Failed to submit delete feedback:', error);
+      return { ok: false, error };
+    }
   }, [deletedTask]);
 
   const updateTask = useCallback((boardId, columnId, taskId, newText, subtaskPath) => {
@@ -1192,7 +1246,7 @@ export default function useKanban() {
     updateSettings, updateStorageConfig, exportData, importData, resetDemoData,
     addTask, deleteTask, duplicateTask, updateTask, updateTaskPriority, updateTaskColor, updateTaskReferences, updateTaskWaitingOn, updateTaskDueDate,
     moveTaskToAdjacentColumn,
-    undoDelete, deletedTask, undoDeleteSubtask, deletedSubtask,
+    undoDelete, deletedTask, submitDeleteFeedback, undoDeleteSubtask, deletedSubtask,
     updateColumnTitle, updateBoardTitle, toggleBoardCollapsed,
     addBoard, deleteBoard, addColumn, deleteColumn,
     // Subtask operations

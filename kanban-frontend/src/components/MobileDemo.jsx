@@ -3,6 +3,8 @@ import { ChevronLeft, ChevronRight, Moon, Plus, Sun } from 'lucide-react';
 import { useKanbanContext } from '../contexts/KanbanContext';
 import { useContextMenu } from '../contexts/ContextMenuContext';
 import TaskCard from './TaskCard';
+import { getBoardPriorityBadgeMaps } from '../utils/priorityBadges';
+import { partitionLimboTasks } from '../utils/limboTasks';
 import './MobileDemo.css';
 
 const LONG_PRESS_MS = 650;
@@ -125,7 +127,7 @@ const buildStackSections = (boards, boardOrder) => (
   })
 );
 
-const MobileSwipeTaskCard = ({ task, section, taskIndex, onMove }) => {
+const MobileSwipeTaskCard = ({ task, section, taskIndex, onMove, activePriorityBadge }) => {
   const pressTimerRef = useRef(null);
   const gestureRef = useRef(null);
   const suppressClickRef = useRef(false);
@@ -360,6 +362,7 @@ const MobileSwipeTaskCard = ({ task, section, taskIndex, onMove }) => {
           columnTitle={section.columnTitle}
           taskIndex={taskIndex}
           disableNativeDrag
+          activePriorityBadge={activePriorityBadge}
         />
       </div>
       <div className="mobile-swipe-affordance" aria-hidden="true">
@@ -395,10 +398,14 @@ const MobileDemo = () => {
   } = kanban;
   const [activeInput, setActiveInput] = useState(null);
   const [draft, setDraft] = useState('');
+  const [expandedLimboSections, setExpandedLimboSections] = useState({});
   const firstSectionRef = useRef(null);
   const inputRef = useRef(null);
 
   const sections = useMemo(() => buildStackSections(boards, boardOrder), [boards, boardOrder]);
+  const priorityBadgeMaps = useMemo(() => (
+    getBoardPriorityBadgeMaps(boards, boardOrder)
+  ), [boards, boardOrder]);
 
   useEffect(() => {
     requestAnimationFrame(() => {
@@ -424,11 +431,50 @@ const MobileDemo = () => {
     resetInput();
   };
 
+  const toggleLimboSection = (sectionKey) => {
+    setExpandedLimboSections(prev => ({
+      ...prev,
+      [sectionKey]: !prev[sectionKey],
+    }));
+  };
+
+  const renderLimboSummary = (sectionKey, limboCount, isExpanded) => (
+    <button
+      type="button"
+      className={`limbo-summary ${isExpanded ? 'is-expanded' : ''}`}
+      onClick={() => toggleLimboSection(sectionKey)}
+      aria-expanded={isExpanded}
+      title={isExpanded ? 'Hide limbo cards' : 'Show limbo cards'}
+    >
+      <span>{isExpanded ? 'hide limbo' : `and ${limboCount} more...`}</span>
+      <small>limbo</small>
+    </button>
+  );
+
+  const renderMobileTaskEntry = (section, entry, isLimbo = false) => (
+    <div
+      key={`${isLimbo ? 'limbo' : 'task'}-${entry.task.id ?? entry.taskIndex}`}
+      className={isLimbo ? 'limbo-task-shell' : undefined}
+    >
+      <MobileSwipeTaskCard
+        task={entry.task}
+        section={section}
+        taskIndex={entry.taskIndex}
+        onMove={moveTaskToAdjacentColumn}
+        activePriorityBadge={priorityBadgeMaps[section.boardId]?.get(String(entry.task.id))}
+      />
+    </div>
+  );
+
   return (
     <main className={`mobile-demo-screen ${isDarkMode ? 'mobile-demo-dark' : 'mobile-demo-light'}`}>
       {sections.map((section, sectionIndex) => {
         const inputKey = `${section.boardId}:${section.columnId}`;
         const inputOpen = activeInput === inputKey;
+        const { visibleTasks, limboTasks } = partitionLimboTasks(section.tasks, section.columnTitle);
+        const limboExpanded = Boolean(expandedLimboSections[inputKey]);
+        const firstVisibleTask = visibleTasks[0];
+        const remainingVisibleTasks = visibleTasks.slice(1);
 
         return (
           <section
@@ -507,7 +553,7 @@ const MobileDemo = () => {
                     ]);
                   }}
                 >
-                  {section.tasks.length === 0 ? (
+                  {visibleTasks.length === 0 && limboTasks.length === 0 ? (
                     <div
                       className="column-empty cursor-pointer"
                       onClick={() => setActiveInput(inputKey)}
@@ -521,15 +567,12 @@ const MobileDemo = () => {
                       + Add a task
                     </div>
                   ) : (
-                    section.tasks.map((task, taskIndex) => (
-                      <MobileSwipeTaskCard
-                        key={task.id}
-                        task={task}
-                        section={section}
-                        taskIndex={taskIndex}
-                        onMove={moveTaskToAdjacentColumn}
-                      />
-                    ))
+                    <>
+                      {firstVisibleTask && renderMobileTaskEntry(section, firstVisibleTask)}
+                      {limboTasks.length > 0 && renderLimboSummary(inputKey, limboTasks.length, limboExpanded)}
+                      {limboExpanded && limboTasks.map(entry => renderMobileTaskEntry(section, entry, true))}
+                      {remainingVisibleTasks.map(entry => renderMobileTaskEntry(section, entry))}
+                    </>
                   )}
                 </div>
               </div>

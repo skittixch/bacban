@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { X, ArrowLeft, Edit3, Calendar } from 'lucide-react';
 import { useFocus } from '../contexts/FocusContext';
 import { useKanbanContext } from '../contexts/KanbanContext';
 import SubtaskBoard from './SubtaskBoard';
 import ReferenceEditor from './ReferenceEditor';
 import InlineEdit from './InlineEdit';
-import { getTaskPriorityBadge } from '../utils/priorityBadges';
+import { getActivePriorityBadgeMap, getTaskPriorityBadge, isCompletionColumnTitle } from '../utils/priorityBadges';
 
 const isWaitingColumn = (title) => /waiting|hold|block|review/i.test(title || '');
 
@@ -41,6 +41,11 @@ const TaskOverlay = ({
   const [phase, setPhase] = useState('entering');
   const overlayRef = useRef(null);
   const editInlineRef = useRef(null);
+  const board = boards[boardId];
+  const columnTitle = board?.columnTitles?.[columnId];
+  const activePriorityBadgeMap = useMemo(() => (
+    board ? getActivePriorityBadgeMap(board, boardId) : new Map()
+  ), [board, boardId]);
 
   // Two-frame mount for CSS transition trigger
   useEffect(() => {
@@ -124,16 +129,18 @@ const TaskOverlay = ({
     layerPointer = 'none';
   }
 
+  const activePriorityBadge = activePriorityBadgeMap.get(String(task.id));
   const progress = getTaskProgress ? getTaskProgress(task) : null;
-  const priorityBadge = getTaskPriorityBadge(task);
+  const priorityBadge = getTaskPriorityBadge(task, {
+    activeBadge: activePriorityBadge,
+    isCompleted: isCompletionColumnTitle(columnTitle),
+  });
 
   const isSubtaskLevel = (entry.subtaskPath || []).length > 0;
   const overlayClassName = `task-overlay ${phase} ${
     isSubtaskLevel ? 'task-overlay--nested' : 'task-overlay--root'
   }`;
 
-  const board = boards[boardId];
-  const columnTitle = board?.columnTitles?.[columnId];
   const showWaiting = isWaitingColumn(columnTitle) || !!task.waitingOn || isSubtaskLevel;
 
 
@@ -214,13 +221,20 @@ const TaskOverlay = ({
           {priorityBadge && (
             <span
               className={`task-priority-rank overlay-priority-rank task-priority-rank-${priorityBadge.kind} ${
-                priorityBadge.isTopPriority ? 'task-priority-rank-top' : ''
+                priorityBadge.isCompleted ? 'task-priority-rank-completed' : ''
+              } ${
+                priorityBadge.isTopPriority && !priorityBadge.isCompleted ? 'task-priority-rank-top' : ''
               }`}
               title={priorityBadge.title}
               aria-label={priorityBadge.ariaLabel}
-              data-priority-rank={priorityBadge.rank}
+              data-priority-rank={priorityBadge.isCompleted ? (priorityBadge.originalRank || priorityBadge.rank) : priorityBadge.rank}
+              data-priority-status={priorityBadge.isCompleted ? 'completed' : 'active'}
             >
-              {priorityBadge.rank}
+              {priorityBadge.isCompleted ? (
+                <span className="task-priority-done-check" aria-hidden="true" />
+              ) : (
+                priorityBadge.rank
+              )}
             </span>
           )}
 
