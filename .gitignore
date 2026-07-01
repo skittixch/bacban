@@ -26,6 +26,7 @@ credentials*.json
 token*.json
 
 # Local automation outputs and private job payloads
+codex/backups/
 codex/outputs/
 codex/**/outputs/
 codex/jobs/
