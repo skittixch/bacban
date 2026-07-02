@@ -31,8 +31,11 @@ future intake can route similar cards to the owner-corrected collection.
 
 Append records through:
 
-```powershell
-.\codex\event-intake\Write-AgentLedgerEvent.ps1 -PayloadJson '<json>' -Source gmail -Gateway openclaw
+```bash
+cd /x/_bacsapps/bacban
+bash codex/event-intake/Write-AgentLedgerEvent.sh --payload-json '<json>' --source gmail --gateway openclaw
 ```
+
+PowerShell `codex\event-intake\Write-AgentLedgerEvent.ps1` is a compatibility fallback only.
 
 Do not store raw email bodies, OAuth tokens, API keys, service-account keys, WhatsApp session data, or full message dumps in this folder.

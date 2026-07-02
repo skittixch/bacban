@@ -6,7 +6,7 @@ param(
   [ValidateSet('openclaw', 'codex-automation', 'manual', 'other')]
   [string]$Gateway = 'openclaw',
 
-  [ValidateSet('received', 'triaged', 'board-changed', 'work-started', 'completed', 'blocked', 'approval-required', 'no-op', 'duplicate', 'failed')]
+  [ValidateSet('received', 'triaged', 'board-changed', 'work-started', 'completed', 'blocked', 'approval-required', 'no-op', 'already-handled-by-Eric', 'duplicate', 'failed')]
   [string]$Status = 'received',
 
   [string]$InputPath,

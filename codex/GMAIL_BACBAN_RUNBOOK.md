@@ -1,6 +1,6 @@
 # Gmail to BacBan Agent Runbook
 
-Last updated: 2026-06-29
+Last updated: 2026-07-01
 
 This file is the durable handoff for the Gmail-triggered BacBan workflow across Codex, OpenCLAW, BacBan, and future Hermes-style agents.
 
@@ -22,21 +22,26 @@ Important distinction: OpenCLAW is the inbound/event gateway. BacBan API readbac
 Private status target: Telegram.
 Current verified fallback: WhatsApp, until Telegram sends and receives are proven end to end.
 
-Before changing event classification, same-method status behavior, dedupe, or ledger handling, read `codex\event-intake\event-rules.md`. Inbound Gmail/OpenCLAW events should be appended to the private ledger with `codex\event-intake\Write-AgentLedgerEvent.ps1`; the default runtime log is `codex\agent-ledger\events.jsonl` and must stay out of Git.
+Before changing event classification, same-method status behavior, dedupe, or ledger handling, read `codex\event-intake\event-rules.md`. Inbound Gmail/OpenCLAW events should be appended to the private ledger with Git Bash helper `codex/event-intake/Write-AgentLedgerEvent.sh`; the PowerShell script is a compatibility fallback only. The default runtime log is `codex\agent-ledger\events.jsonl` and must stay out of Git.
 
 BacBan board writes also append backend-generated private board-change messages to `codex\agent-ledger\board-events.jsonl`. Deleted top-level cards append tombstones to `codex\agent-ledger\deleted-cards.jsonl`; optional delete-toast reasons append to `codex\agent-ledger\deleted-card-feedback.jsonl`; use those tombstones and reasons as a guardrail before recreating mail-derived cards. Work/Life cross-board moves append routing hints to `codex\agent-ledger\collection-routing.jsonl`; use those hints before choosing the target board for similar future cards.
 
-Live hook wiring as of 2026-06-24: the OpenCLAW mapping `gmail-bacban-triage` includes a ledger-first requirement in its `messageTemplate`, so every rendered Gmail event should run `Write-AgentLedgerEvent.ps1` before triage, BacBan writes, notifications, or project work.
+Live hook wiring as of 2026-07-01: the OpenCLAW mapping `gmail-bacban-triage` includes a ledger-first Git Bash requirement in its `messageTemplate`, so every rendered Gmail event should run `codex/event-intake/Write-AgentLedgerEvent.sh` before triage, BacBan writes, notifications, or project work.
+
+Duplicate event short-circuit as of 2026-07-01: after the initial `received` ledger write, run `codex/event-intake/Find-AgentLedgerTerminalEvent.sh` for the Gmail message id and thread id when available. If the writer returned `duplicate=true` and the lookup finds an existing terminal record (`completed`, `board-changed`, `work-started`, `blocked`, `approval-required`, `no-op`, `already-handled-by-Eric`, `duplicate`, or `failed`) for the same message/thread in the recent window, stop as a duplicate/status-only no-op. Do not re-read Gmail, write BacBan, send a private nudge, or start project work unless the live thread has a newer actionable message that is not represented by that terminal event.
 
 ## Local Automation Guardrails
 
 Use these local guardrails before treating a transient tool problem as a task failure:
 
-- `CODEX_HOME` may be unset in scheduled PowerShell shells. Resolve Codex home as `$env:CODEX_HOME` when present, otherwise use `C:\Users\eric\.codex`. Do not let memory writeback fail after the real work has succeeded just because the env var is missing.
-- Prefer `Invoke-RestMethod` for BacBan API reads/writes, but if a PowerShell web cmdlet throws a `NullReferenceException`, body/header serialization error, or other local cmdlet wrapper failure, retry with `curl.exe` and parse the JSON result. Keep the API contract the same: full-state GET, backup, full-state POST, health, readback.
+- Git Bash is the preferred local shell for this workflow. Use `C:\Program Files\Git\bin\bash.exe` when choosing a shell, the repo path `/x/_bacsapps/bacban`, and the checked-in `.sh` helpers. They normalize MSYS and Windows paths before invoking Node.
+- User PATH was hardened on 2026-07-01 to include `C:\Program Files\Git\cmd`, `C:\Program Files\Git\bin`, and `C:\Program Files\nodejs`; it already included `C:\Program Files\Git\usr\bin`, npm, `gog`, and ripgrep package paths. Existing shells may still have stale PATH, and Windows `bash` may still resolve to WSL first in some contexts, so automation prompts should keep using the explicit Git Bash path or checked-in `.sh` helpers.
+- `CODEX_HOME` may be unset in scheduled shells. Resolve Codex home from `$CODEX_HOME` when present, otherwise use `/c/Users/eric/.codex` from Git Bash or `C:\Users\eric\.codex` from Windows tools. Do not let memory writeback fail after the real work has succeeded just because the env var is missing.
+- If a Codex automation directory has `memory.md` but no `automation.toml`, treat it as app-managed or legacy scheduler state. Read `LOCAL_AUTOMATION_MIRROR.md` when present and inspect/update the existing automation id through `automation_update`; do not create a replacement cron unless the old app-managed automation is paused, deleted, or fully exported.
+- Prefer `curl` plus raw JSON parse/stringify in Node for BacBan API reads/writes. If a run is forced into PowerShell and a web cmdlet throws a `NullReferenceException`, body/header serialization error, or other local cmdlet wrapper failure, retry from Git Bash with `curl` and Node. Keep the API contract the same: full-state GET, backup, full-state POST, health, readback.
 - Before creating a BacBan card from a candidate Gmail item, call `POST http://127.0.0.1:3001/api/deleted-cards/check` with subject, sender/from, and a short snippet. If it matches a deleted-card tombstone or delete-toast reason, classify as likely duplicate/noise unless current evidence clearly proves a new actionable task.
 - Before choosing Work versus Life for a new BacBan card, call `POST http://127.0.0.1:3001/api/collection-routing/check` with the candidate title/subject/snippet. Prefer the recommended board unless the current evidence clearly overrides the historical owner move.
-- For private WhatsApp sends, prefer `X:\_bacsapps\bacban\codex\scripts\send-openclaw-whatsapp.ps1`. It uses the shared `Local\BacBanOpenClawCliLock`, retries once after restarting the OpenCLAW gateway for retryable gateway failures such as `ECONNREFUSED`, `GatewayTransportError`, websocket `1006`, or timeout, and writes private evidence under `codex\outputs\openclaw-whatsapp-send`.
+- For private WhatsApp sends, prefer Git Bash helper `codex/scripts/send-openclaw-whatsapp.sh`. It uses a local OpenCLAW CLI file lock, retries once after restarting the OpenCLAW gateway for retryable gateway failures such as `ECONNREFUSED`, `GatewayTransportError`, websocket `1006`, or timeout, and writes private evidence under `codex\outputs\openclaw-whatsapp-send`. The `.ps1` helper is compatibility fallback only.
 - If the helper is unavailable, a direct `openclaw message send --channel whatsapp ... --json` failure should be handled the same way: verify the BacBan write/readback separately, restart the gateway once for retryable transport errors, retry the private send once, then report notification failure as a last-mile issue rather than rolling back board state.
 
 ## Native Codex Hooks Finding
@@ -65,9 +70,12 @@ Card creation or movement is intake, not completion. For actionable implementati
 
 1. Re-anchor in the relevant project files, existing BacBan card, runbook, manifest, or handoff.
 2. Move or keep the card `In Progress`.
-3. Do one bounded safe work loop: inspect the real source of truth, make the smallest useful reversible change or produce the needed artifact, and run proportionate verification.
-4. Update BacBan with the work done, evidence path or command/readback result, verification, status, and next action.
-5. Continue only while progress is clear and safe; otherwise stop as complete, clean no-op, blocked, approval-required, or waiting.
+3. For client/project creative work, create or reuse the project-local X-drive folder before producing artifacts. For Tiki Taco/Lyndon/Rachel work, prefer `X:\Professional\TikiTaco\TT####-<ProjectLabel>` with `incoming`, `working`, `working\codex`, and `outgoing`. If the task uses AI Navigator, also create or reuse one canonical AI Navigator collection/project/shot and record it in `working\codex\ai-navigator-shot.json`.
+4. Do one bounded safe work loop: inspect the real source of truth, make the smallest useful reversible change or produce the needed artifact, and run proportionate verification.
+5. Update BacBan with the work done, evidence path or command/readback result, verification, status, and next action.
+6. Continue only while progress is clear and safe; otherwise stop as complete, clean no-op, blocked, approval-required, or waiting.
+
+At the end of every processed event, append a terminal ledger record with `codex/event-intake/Write-AgentLedgerEvent.sh` using the final status (`no-op`, `duplicate`, `board-changed`, `work-started`, `completed`, `blocked`, `approval-required`, `already-handled-by-Eric`, or `failed`). The terminal record should include the Gmail message id/thread id, the final classification, brief verification, and next action. Automation memory is useful, but it is not a substitute for the terminal ledger state because the duplicate short-circuit reads the ledger.
 
 Fail closed before boss/client-facing delivery, messages to third parties, publishing, payments, credentials, destructive actions, production deploys, or unclear authority. If blocked, put the exact `I need...` list and easiest next step in the private report and on the card when useful.
 
@@ -174,17 +182,18 @@ If WhatsApp delivery fails, do not mark the BacBan write as failed until board w
 
 When a private WhatsApp status is needed, prefer:
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File X:\_bacsapps\bacban\codex\scripts\send-openclaw-whatsapp.ps1 -Message "<short private status>"
+```bash
+cd /x/_bacsapps/bacban
+bash codex/scripts/send-openclaw-whatsapp.sh --message "<short private status>"
 ```
 
-Use `-DryRun` for non-delivery probes. Do not send test messages to Eric just to prove a no-op run.
+Use `--dry-run` for non-delivery probes. Do not send test messages to Eric just to prove a no-op run.
 
 ## Direct WhatsApp Intake Reliability
 
 As of 2026-06-25, phone-origin WhatsApp messages for the BacBan/OpenCLAW path should route to the dedicated OpenClaw agent `bacban-whatsapp-intake`, not the broad default `main` agent. The intake workspace is private local state, heartbeat-disabled, and should acknowledge quickly or fail closed for broad/unsafe work.
 
-If you keep local operator probes under `codex\scripts\`, use these shapes before changing WhatsApp intake behavior or when replies regress:
+If local operator probes under `codex\scripts\` are needed before changing WhatsApp intake behavior or when replies regress, prefer Git Bash-first helpers when available. These legacy probes are still PowerShell-only compatibility tools and are not part of the recurring Gmail intake action path:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\codex\scripts\repair-openclaw-whatsapp.ps1 -DryRunMessage -RetryCount 3 -RetryDelaySeconds 1
@@ -196,7 +205,7 @@ Private proof artifacts should live under `codex\outputs\` and stay out of Git. 
 
 Telegram cutover work is separate from the phone-origin intake proof. Do not mark the private-status channel as cut over until a live Telegram send/receive roundtrip is verified and the docs point to the new channel end to end.
 
-The local WhatsApp harnesses use the named mutex `Local\BacBanOpenClawCliLock` so overlapping operator probes do not race OpenClaw CLI calls. If a BacBan due-notification send uses `codex\scripts\bacban-notify.ps1`, it must check the OpenClaw send exit code before marking notifications sent.
+The Git Bash WhatsApp send helper uses a local OpenCLAW CLI file lock so overlapping Bash sends do not race OpenCLAW CLI calls. Legacy PowerShell harnesses still use the named mutex `Local\BacBanOpenClawCliLock`. If a BacBan due-notification send uses `codex\scripts\bacban-notify.ps1`, it must check the OpenClaw send exit code before marking notifications sent.
 
 ## Eric-Only Completion / Blocked Replies
 
@@ -229,20 +238,20 @@ Use `git status` and `git diff` for future app/doc changes. Do not force-add ign
 
 Useful checks:
 
-```powershell
-Invoke-RestMethod -Uri 'http://127.0.0.1:3001/health'
-curl.exe -fsS http://127.0.0.1:3001/health
+```bash
+cd /x/_bacsapps/bacban
+curl -fsS http://127.0.0.1:3001/health
 gog gmail watch status --account <configured-gmail-account> --json --no-input
 openclaw config validate
 openclaw status --json
-powershell -NoProfile -ExecutionPolicy Bypass -File X:\_bacsapps\bacban\codex\scripts\repair-openclaw-whatsapp.ps1 -Repair -RestartOnDisconnected
+bash codex/scripts/send-openclaw-whatsapp.sh --message "dry run only" --dry-run
 docker compose ps
 git status --short --ignored
 ```
 
 When changing the frontend:
 
-```powershell
+```bash
 docker compose build kanban-frontend
 docker compose up -d kanban-frontend
 ```

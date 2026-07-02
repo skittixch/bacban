@@ -112,29 +112,34 @@ Record one JSON object per line with:
 
 Do not store raw email bodies, OAuth tokens, API keys, WhatsApp session secrets, service-account keys, or full private message dumps in the ledger.
 
+After the initial `received` record, every processed event should get exactly one terminal-result record when the run reaches a decision. Use one of the terminal statuses listed above, and include the same Gmail message id/thread id so duplicate-event detection can find it later. Automation memory summaries are not enough by themselves.
+
+Before doing expensive duplicate-event work, use Git Bash helper `codex/event-intake/Find-AgentLedgerTerminalEvent.sh` with the incoming Gmail message id and, when known, thread id. If the initial writer returned `duplicate=true` and this lookup finds a recent terminal record for the same message/thread, stop as duplicate/status-only unless live Gmail proves a newer actionable message exists outside that terminal event.
+
 ## Writer
 
-Use the first local writer:
+Use the Git Bash local writer first:
 
-```powershell
-$payload = @{
-  emailAddress = '<gmail-account>'
-  historyId = '<history-id>'
-  messageId = '<gmail-message-id>'
-  threadId = '<gmail-thread-id>'
-  subject = '<subject>'
-  from = '<sender>'
-  hookId = 'gmail-bacban-triage'
-  sessionKey = 'hook:gmail-bacban-triage'
-  classification = 'actionable-task'
-  nextAction = 'Match to BacBan card, then run one bounded safe loop.'
-} | ConvertTo-Json -Depth 10
+```bash
+cd /x/_bacsapps/bacban
+payload="$(node -e 'process.stdout.write(JSON.stringify({
+  emailAddress: "<gmail-account>",
+  historyId: "<history-id>",
+  messageId: "<gmail-message-id>",
+  threadId: "<gmail-thread-id>",
+  subject: "<subject>",
+  from: "<sender>",
+  hookId: "gmail-bacban-triage",
+  sessionKey: "hook:gmail-bacban-triage",
+  classification: "actionable-task",
+  nextAction: "Match to BacBan card, then run one bounded safe loop."
+}))')"
 
-.\codex\event-intake\Write-AgentLedgerEvent.ps1 `
-  -PayloadJson $payload `
-  -Source gmail `
-  -Gateway openclaw `
-  -Status received
+bash codex/event-intake/Write-AgentLedgerEvent.sh \
+  --payload-json "$payload" \
+  --source gmail \
+  --gateway openclaw \
+  --status received
 ```
 
-Use `-DryRun` to validate the normalized record without appending. Use `-AllowDuplicate` only for deliberate replay tests.
+Use `--dry-run` to validate the normalized record without appending. Use `--allow-duplicate` only for deliberate replay tests. PowerShell `Write-AgentLedgerEvent.ps1` and `Find-AgentLedgerTerminalEvent.ps1` remain compatibility fallbacks only.
