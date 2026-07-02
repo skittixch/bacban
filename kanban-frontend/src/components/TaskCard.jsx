@@ -6,6 +6,9 @@ import { useContextMenu } from '../contexts/ContextMenuContext';
 import InlineEdit from './InlineEdit';
 import { getTaskPriorityBadge, isCompletionColumnTitle } from '../utils/priorityBadges';
 
+const LOCAL_PATH_PATTERN = /(?:[A-Za-z]:\\|\\\\)[^\r\n<>"]+/;
+const TRAILING_PATH_PUNCTUATION = /[.,;:!?]+$/;
+
 const ProgressRing = ({ done, total, size = 22 }) => {
   const r = (size - 4) / 2;
   const circumference = 2 * Math.PI * r;
@@ -41,6 +44,97 @@ const ProgressRing = ({ done, total, size = 22 }) => {
 
 const isWaitingColumn = (title) => /waiting|hold|block|review/i.test(title || '');
 const RECENT_CHANGE_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+const cleanLocalPath = (value) => {
+  if (!value) return '';
+  return value
+    .trim()
+    .replace(/^["'`]+|["'`]+$/g, '')
+    .replace(TRAILING_PATH_PUNCTUATION, '');
+};
+
+const getFirstTodoSubtask = (task) => {
+  const subtasks = task?.subtasks;
+  const items = subtasks?.items;
+  if (!items) return null;
+
+  const preferredColumn = Array.isArray(subtasks.columns) && subtasks.columns.includes('todo')
+    ? 'todo'
+    : (Array.isArray(subtasks.columns) ? subtasks.columns[0] : 'todo');
+
+  return (items[preferredColumn] || []).find((subtask) => (
+    subtask &&
+    !subtask.hidden &&
+    typeof subtask.text === 'string' &&
+    subtask.text.trim()
+  )) || null;
+};
+
+const getSubtaskPreview = (subtask) => {
+  const text = subtask?.text?.trim();
+  if (!text) return null;
+
+  const pathMatch = text.match(LOCAL_PATH_PATTERN);
+  if (!pathMatch) {
+    return { label: text, path: null };
+  }
+
+  const path = cleanLocalPath(pathMatch[0]);
+  const label = `${text.slice(0, pathMatch.index)} ${text.slice(pathMatch.index + pathMatch[0].length)}`
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return {
+    label: label || 'Review next item',
+    path,
+  };
+};
+
+const copyTextToClipboard = async (value) => {
+  if (!value) return false;
+  const clipboard = typeof window !== 'undefined' ? window.navigator?.clipboard : undefined;
+
+  if (clipboard?.writeText) {
+    try {
+      await clipboard.writeText(value);
+      return true;
+    } catch {
+      // Fall through to the textarea fallback below.
+    }
+  }
+
+  if (typeof document === 'undefined') return false;
+
+  const textarea = document.createElement('textarea');
+  textarea.value = value;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.top = '-1000px';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+
+  let copied = false;
+  try {
+    copied = document.execCommand('copy');
+  } finally {
+    document.body.removeChild(textarea);
+  }
+
+  return copied;
+};
+
+const selectElementText = (element) => {
+  if (typeof window === 'undefined' || typeof document === 'undefined' || !element) return false;
+  const selection = window.getSelection?.();
+  if (!selection) return false;
+
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  selection.removeAllRanges();
+  selection.addRange(range);
+  return true;
+};
 
 const parseTaskTime = (value) => {
   if (!value) return null;
@@ -161,6 +255,7 @@ const TaskCard = ({
   const { openTask } = useFocus();
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [copiedPath, setCopiedPath] = useState(null);
   const cardRef = useRef(null);
   const editInlineRef = useRef(null);
 
@@ -239,6 +334,22 @@ const TaskCard = ({
   };
 
   const { links, textWithoutUrls } = extractUrls(task.text);
+  const nextAction = getSubtaskPreview(getFirstTodoSubtask(task));
+
+  const handleCopyPath = async (e, path) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const copied = await copyTextToClipboard(path);
+    if (!copied) {
+      selectElementText(e.currentTarget.querySelector('[data-copy-path-text="true"]'));
+      return;
+    }
+
+    setCopiedPath(path);
+    window.setTimeout(() => {
+      setCopiedPath((current) => (current === path ? null : current));
+    }, 4000);
+  };
 
   const handleDragStartLocal = (e) => {
     const target = e.currentTarget;
@@ -404,6 +515,26 @@ const TaskCard = ({
                         </a>
                       );
                     })}
+                  </div>
+                )}
+                {nextAction && (
+                  <div className="task-next-action">
+                    <p className="task-next-action-title">{nextAction.label}</p>
+                    {nextAction.path && (
+                      <button
+                        type="button"
+                        className="task-next-action-copy"
+                        data-copied={copiedPath === nextAction.path ? 'true' : undefined}
+                        onClick={(e) => handleCopyPath(e, nextAction.path)}
+                        onDoubleClick={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        title={copiedPath === nextAction.path ? 'Copied' : `Copy ${nextAction.path}`}
+                        aria-label={`Copy path ${nextAction.path}`}
+                      >
+                        <Copy size={11} aria-hidden="true" />
+                        <span data-copy-path-text="true">{nextAction.path}</span>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

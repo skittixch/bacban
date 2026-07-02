@@ -719,6 +719,21 @@ textarea {
   -webkit-line-clamp: 2;
 }
 
+.app-shell[data-card-density="compact"] .task-next-action {
+  gap: 0.16rem;
+  margin-top: 0.32rem;
+  padding-left: 0.45rem;
+}
+
+.app-shell[data-card-density="compact"] .task-next-action-title {
+  font-size: 11px;
+  line-height: 1.24;
+}
+
+.app-shell[data-card-density="compact"] .task-next-action-copy span {
+  font-size: 10px;
+}
+
 .app-shell[data-card-density="compact"] .task-card-actions {
   gap: 0.25rem;
 }
@@ -1048,6 +1063,69 @@ textarea {
 
 .task-title-input {
   display: block;
+}
+
+.task-next-action {
+  border-left: 2px solid color-mix(in srgb, var(--theme-primary) 58%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  margin-top: 0.48rem;
+  min-width: 0;
+  padding-left: 0.55rem;
+}
+
+.task-next-action-title {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.28;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.task-next-action-copy {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  cursor: copy;
+  display: flex;
+  gap: 0.32rem;
+  line-height: 1.2;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+  transition: color 0.16s ease;
+  width: 100%;
+}
+
+.task-next-action-copy:hover,
+.task-next-action-copy:focus-visible {
+  color: var(--theme-primary);
+}
+
+.task-next-action-copy:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--theme-primary) 62%, transparent);
+  outline-offset: 3px;
+}
+
+.task-next-action-copy[data-copied="true"] {
+  color: var(--color-success);
+}
+
+.task-next-action-copy svg {
+  flex: 0 0 auto;
+}
+
+.task-next-action-copy span {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 10.5px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .task-card-actions {
