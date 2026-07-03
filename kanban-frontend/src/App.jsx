@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { HardDrive, Plus, RotateCcw, Settings, Sun, Moon, X } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { KanbanProvider, useKanbanContext } from './contexts/KanbanContext';
@@ -9,6 +9,11 @@ import { ContextMenuProvider } from './contexts/ContextMenuContext';
 import ContextMenu from './components/ContextMenu';
 import MobileDemo from './components/MobileDemo';
 import SettingsPanel from './components/SettingsPanel';
+import {
+  getDisplayBoardOrder,
+  getLocalDateKey,
+  getMillisecondsUntilNextLocalDay,
+} from './utils/collectionFocusOrder';
 
 const themes = {
   blue: {
@@ -83,6 +88,7 @@ const KanbanBoardInner = () => {
   const [undoNotification, setUndoNotification] = useState(null);
   const [deleteFeedbackText, setDeleteFeedbackText] = useState('');
   const [deleteFeedbackStatus, setDeleteFeedbackStatus] = useState('idle');
+  const [calendarDateKey, setCalendarDateKey] = useState(() => getLocalDateKey(new Date()));
   const isMobileViewport = useViewportMatch('(max-width: 700px)');
   const queryParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const mobileLayoutEnabled = Boolean(
@@ -97,6 +103,27 @@ const KanbanBoardInner = () => {
     deletedTask, undoDelete, submitDeleteFeedback, deletedSubtask, undoDeleteSubtask,
   } = kanban;
 
+  useEffect(() => {
+    let timeoutId;
+
+    const scheduleDateRefresh = () => {
+      timeoutId = window.setTimeout(() => {
+        setCalendarDateKey(getLocalDateKey(new Date()));
+        scheduleDateRefresh();
+      }, getMillisecondsUntilNextLocalDay(new Date()));
+    };
+
+    scheduleDateRefresh();
+    return () => window.clearTimeout(timeoutId);
+  }, []);
+
+  const focusDate = useMemo(() => {
+    const [year, month, day] = calendarDateKey.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }, [calendarDateKey]);
+  const displayBoardOrder = useMemo(() => (
+    getDisplayBoardOrder(boards, boardOrder, focusDate)
+  ), [boards, boardOrder, focusDate]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -282,7 +309,7 @@ const KanbanBoardInner = () => {
         )}
 
         {mobileLayoutEnabled ? (
-          <MobileDemo />
+          <MobileDemo displayBoardOrder={displayBoardOrder} />
         ) : (
           <>
         {/* Header */}
@@ -341,7 +368,7 @@ const KanbanBoardInner = () => {
 
         {/* Boards */}
         <div className="px-5 py-4">
-          {boardOrder.map(boardId => boards[boardId] && (
+          {displayBoardOrder.map(boardId => boards[boardId] && (
             <Board
               key={boardId}
               boardId={boardId}

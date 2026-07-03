@@ -382,12 +382,12 @@ const MobileSwipeTaskCard = ({ task, section, taskIndex, onMove, activePriorityB
   );
 };
 
-const MobileDemo = () => {
+const MobileDemo = ({ displayBoardOrder }) => {
   const kanban = useKanbanContext();
   const { showContextMenu } = useContextMenu();
   const {
     boards,
-    boardOrder,
+    boardOrder: savedBoardOrder,
     isDarkMode,
     saveStatus,
     setIsDarkMode,
@@ -401,6 +401,7 @@ const MobileDemo = () => {
   const [expandedLimboSections, setExpandedLimboSections] = useState({});
   const firstSectionRef = useRef(null);
   const inputRef = useRef(null);
+  const boardOrder = displayBoardOrder || savedBoardOrder;
 
   const sections = useMemo(() => buildStackSections(boards, boardOrder), [boards, boardOrder]);
   const priorityBadgeMaps = useMemo(() => (

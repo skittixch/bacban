@@ -4,7 +4,7 @@ services:
     container_name: kanban-backend
     restart: unless-stopped
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3001:3001"
     volumes:
       - ./kanban-data:/data # Bind mount for persistent storage
       - ./codex/agent-ledger:/agent-ledger # Private local assistant event evidence
@@ -23,7 +23,7 @@ services:
     container_name: kanban-frontend
     restart: unless-stopped
     ports:
-      - "3000:80"
+      - "127.0.0.1:3000:80"
     environment:
       - REACT_APP_API_URL=http://localhost:3001
     depends_on:
@@ -39,7 +39,7 @@ services:
     working_dir: /app
     command: npm start
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     volumes:
       - ./kanban-frontend:/app
     environment:
